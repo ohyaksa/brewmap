@@ -1,15 +1,32 @@
-# BREWMAP — 3D Coffee Brewing Studio v1.654
+# BrewMap — 3D Coffee Brewing Studio v1.655
 
 원두·드리퍼·분쇄 설정과 바리스타 프리셋을 구성하고, 투명 드리퍼 기반 3D 추출 애니메이션, 추출 분석, 추출 후 관능평가 기록을 제공하는 정적 웹 앱입니다.
 
 ## 배포 파일
 
-GitHub Pages 저장소의 최상위 폴더에 다음 파일을 둡니다.
+GitHub Pages 저장소의 최상위 폴더에 실행 파일을 두고, 이미지·아이콘은 `assets/` 하위 폴더에 둡니다.
 
 - `index.html` — 앱 화면 및 반응형 디자인
 - `coffee_recipes.js` — 원두·드리퍼·바리스타 프리셋·그라인더 데이터
 - `brew_engine.js` — 설정 제어, 레시피·시음 기록 저장/복원, 차트, 3D 추출 타이머 및 사운드
 - `help.html` — 사용자 도움말
+
+```text
+brewmap/
+├── index.html
+├── coffee_recipes.js
+├── brew_engine.js
+├── help.html
+├── README.md
+└── assets/
+    ├── site.webmanifest
+    ├── icon_app_512.png
+    ├── icon_app_192.png
+    ├── apple-touch-icon.png
+    ├── favicon-32.png
+    ├── kakao_share_1200x630.png
+    └── dripper_*.png
+```
 
 ## 주요 기능
 
@@ -83,3 +100,27 @@ SCA 차트의 음영 영역은 참고 기준 TDS 1.15–1.35%, EY 18–22%를 �
 - v1.653 — 분석 패널을 세팅 아래 전체 폭으로 재배치하고 예상 향미 막대 → 시간별 용출 → SCA 차트 → 통계 → 추출 시작 순으로 정렬. 3D 캔버스의 대기 카운트다운을 비이커 중앙에, 현재/총 물량을 왼쪽에, 경과/목표 시간을 오른쪽에 배치. 기존 예상·실측 지표와 저장 흐름은 유지.
 - v1.652 — BREWMAP 브랜드명, 예상/실측 EY·TDS 및 SCA 차트 구분, 바리스타 설명·YouTube 링크, 투명 드리퍼와 커피층 팽창/배수 애니메이션, 추출 후 관능평가 자동 저장, 수동 레시피 저장과 평가 연동
 - v1.651 — 네 단계 설정 메뉴 상시 표시, 분쇄 설정 독립 메뉴화, 물 붓기 일정 그래프, 추출 비율 비교 그래프, 프로파일 통계
+
+
+## 이미지 파일 및 앱 아이콘 (v1.655)
+
+웹사이트 이미지와 아이콘은 저장소 최상위의 `assets/` 폴더에 둡니다. 파일명은 HTML 참조와 동일하게 유지합니다.
+
+- `icon_app_512.png`, `icon_app_192.png`, `icon_app_128.png`: BrewMap 앱 아이콘 (단색 딥그린 배경, Hario V60 이미지)
+- `apple-touch-icon.png`: iPhone 홈 화면 아이콘
+- `favicon-32.png`: 브라우저 파비콘
+- `kakao_share_1200x630.png`: 카카오톡 링크 미리보기 이미지
+- `dripper_bluebottle_*.png`: 블루보틀 드리퍼 이미지
+- `dripper_hario_v60_*.png`: 하리오 V60 드리퍼 이미지
+- `dripper_kalita_glass_*.png`: 제공된 사진을 참고한 칼리타 유리 드리퍼 이미지
+- `site.webmanifest`: 모바일 홈 화면 설치 정보
+
+HTML은 `assets/파일명` 경로로 참조합니다. 이미지 파일명을 변경하면 `index.html`과 `assets/site.webmanifest`의 경로도 함께 변경해야 합니다.
+
+### v1.655 변경 범위
+
+- 3D 추출 캔버스에서 물량·시간 정보를 드리퍼와 서버 사이로 이동하고, 각 숫자/레이블을 가운데 정렬합니다.
+- 물량 선은 누적 투입량의 일의 자리 숫자에 따라 길이가 변하며, 시간 선은 추출 중 0.5초 표시 / 0.5초 숨김으로 점멸합니다.
+- 만족도 별표는 SVG 기반으로 렌더링해 반쪽 별을 안정적으로 표시합니다.
+- 앱 아이콘, 파비콘, iPhone 홈 아이콘, Kakao OG 이미지와 드리퍼 선택 이미지를 `assets/`에서 불러옵니다.
+- 기존 추출 계산, 레시피, 평가 저장 구조는 변경하지 않습니다.

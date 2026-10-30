@@ -3,7 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BREWMAP — 3D Coffee Brewing Studio v1.654</title>
+  <title>BrewMap — 3D Coffee Brewing Studio v1.655</title>
+  <meta name="description" content="BrewMap — 3D Coffee Brewing Studio. 원두별 분석, 바리스타 레시피, 3D 추출 시뮬레이션과 나만의 커피 기록." />
+  <meta name="theme-color" content="#0C4530" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+  <link rel="manifest" href="assets/site.webmanifest" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="BrewMap" />
+  <meta property="og:title" content="BrewMap — 3D Coffee Brewing Studio" />
+  <meta property="og:description" content="나만의 커피 추출 연구실 · 원두별 분석 · 바리스타 레시피 · 3D 추출 시뮬레이션" />
+  <meta property="og:image" content="https://ohyaksa.github.io/brewmap/assets/kakao_share_1200x630.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="BrewMap 3D Coffee Brewing Studio" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BrewMap — 3D Coffee Brewing Studio" />
+  <meta name="twitter:description" content="나만의 커피 추출 연구실" />
+  <meta name="twitter:image" content="https://ohyaksa.github.io/brewmap/assets/kakao_share_1200x630.png" />
   <style>
     :root {
       --theme-color: #00a1e4;
@@ -138,6 +155,7 @@
       justify-content: center;
       margin: 0 auto 10px auto;
     }
+    .auth-logo-image { display:block; object-fit:cover; padding:0; }
 
     .auth-box h2 {
       font-size: 20px;
@@ -220,6 +238,7 @@
       font-weight: 900;
       font-size: 18px;
     }
+    .logo-image { display:block; object-fit:cover; background:#0c4530; flex:0 0 36px; }
 
     h1 {
       font-size: 16.5px;
@@ -293,18 +312,25 @@
     }
 
     .dripper-tab {
-      padding: 6px 12px;
-      border-radius: 8px;
+      min-width:0;
+      flex:1 1 0;
+      padding: 8px 10px;
+      border-radius: 10px;
       border: 1.5px solid var(--border-color);
       background: #f8f9fa;
       font-size: 12.5px;
       font-weight: 800;
       cursor: pointer;
       display: flex;
+      flex-direction:column;
       align-items: center;
+      justify-content:center;
       gap: 5px;
       transition: all 0.15s;
+      text-align:center;
     }
+    .dripper-tab img { display:block; width:64px; height:64px; max-width:100%; object-fit:contain; border-radius:8px; }
+    .dripper-tab span { display:block; line-height:1.25; }
 
     .dripper-tab.active {
       border-color: var(--theme-color);
@@ -1115,15 +1141,16 @@
     .tasting-save-status { margin-top:7px; font-size:11px; font-weight:800; color:#42634a; }
     .overall-rating-panel { margin-top:10px; padding:11px; border:1px solid #e1e9e2; border-radius:11px; background:#fff; }
     .overall-rating-stars { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:8px; }
-    .rating-star-wrap { position:relative; display:inline-block; width:34px; height:36px; font-size:32px; line-height:36px; }
-    .rating-star-base { color:#d9e0da; position:absolute; inset:0; text-align:center; pointer-events:none; }
-    .rating-star-half { position:absolute; top:0; width:50%; height:36px; padding:0; margin:0; border:0; border-radius:0; background:transparent; color:transparent; font-size:32px; line-height:36px; overflow:hidden; cursor:pointer; z-index:2; }
-    .rating-star-half.active { color:#d69a39; }
-    .rating-star-half.left { left:0; text-align:left; }
-    .rating-star-half.right { right:0; text-align:right; }
+    .rating-star-wrap { position:relative; display:inline-block; width:34px; height:36px; flex:0 0 34px; }
+    .rating-star-graphic { position:absolute; inset:0; display:block; pointer-events:none; }
+    .rating-star-graphic svg { display:block; width:34px; height:34px; overflow:visible; }
+    .rating-star-half { position:absolute; top:0; width:50%; height:36px; padding:0 !important; margin:0 !important; border:0 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; color:transparent !important; overflow:hidden; cursor:pointer; z-index:2; }
+    .rating-star-half.left { left:0; }
+    .rating-star-half.right { right:0; }
+    .rating-star-half:focus-visible { outline:2px solid #527e5d; outline-offset:1px; border-radius:4px !important; }
     .rating-star-caption { margin-left:7px; color:#526456; font-size:12px; font-weight:900; }
-    .saved-rating-stars { color:#d69a39; letter-spacing:1px; font-size:13px; white-space:nowrap; }
-    .half-star { background:linear-gradient(90deg,#d69a39 50%,#cbd3cc 50%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .saved-rating-stars { display:inline-flex; align-items:center; gap:1px; color:#d69a39; white-space:nowrap; vertical-align:middle; }
+    .saved-rating-stars svg { display:block; width:15px; height:15px; flex:0 0 15px; }
     .tasting-extra-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:9px; margin-top:10px; }
     .tasting-extra-grid label { display:flex; flex-direction:column; gap:5px; color:#526456; font-size:11px; font-weight:850; }
     .tasting-extra-grid select,.tasting-extra-grid textarea { width:100%; border:1px solid #d8e2d9; border-radius:9px; padding:9px; background:#fff; color:#243329; font:inherit; }
@@ -1149,8 +1176,8 @@
   <!-- ================= 1. 첫 화면 입장(Auth) 모달 ================= -->
   <div class="auth-overlay" id="authOverlay">
     <div class="auth-box">
-      <div class="auth-logo">☕</div>
-      <h2>BREWMAP</h2>
+      <img class="auth-logo auth-logo-image" src="assets/icon_app_128.png" alt="BrewMap" width="52" height="52" />
+      <h2>BrewMap</h2>
       <p>3D Coffee Brewing Studio · 커피 브루잉 레시피와 추출 시뮬레이션</p>
 
       <div class="welcome-guest-banner" id="url-guest-banner">
@@ -1184,11 +1211,11 @@
     <!-- 컴팩트 헤더 + [상단] 3D 입체 추출 시작 버튼 -->
     <header>
       <div class="title-group">
-        <div class="logo-badge" id="logo-badge">B</div>
+        <img class="logo-badge logo-image" id="logo-badge" src="assets/icon_app_128.png" alt="BrewMap 아이콘" width="36" height="36" />
         <div>
           <h1>
-            <span id="header-barista-title">BREWMAP</span>
-            <span class="version-badge" id="app-version">v1.654</span>
+            <span id="header-barista-title">BrewMap</span>
+            <span class="version-badge" id="app-version">v1.655</span>
             <span id="user-role-badge" class="role-badge badge-guest">게스트</span>
           </h1>
           <div class="subtitle" id="welcome-subtitle">3D Coffee Brewing Studio · Recipe Lab · Precision Brewing</div>
@@ -1211,9 +1238,9 @@
       <section class="wizard-step is-current" id="wizard-step-1">
         <div class="wizard-heading"><span class="wizard-number">01</span><span class="wizard-title">드리퍼</span><span class="wizard-prompt">1. 드리퍼를 선택하세요.</span><button class="help-mini" onclick="showInlineHelp('dripper')" aria-label="드리퍼 도움말">?</button></div>
         <div class="dripper-tabs">
-          <button class="dripper-tab" id="card-bluebottle" onclick="selectDripper('bluebottle')">블루보틀</button>
-          <button class="dripper-tab" id="card-hario" onclick="selectDripper('hario')">하리오 V60</button>
-          <button class="dripper-tab" id="card-kalita" onclick="selectDripper('kalita')">칼리타 웨이브</button>
+          <button class="dripper-tab" id="card-bluebottle" onclick="selectDripper('bluebottle')"><img src="assets/dripper_bluebottle_128.png" alt="블루보틀 자기 드리퍼" width="64" height="64" loading="lazy"><span>블루보틀</span></button>
+          <button class="dripper-tab" id="card-hario" onclick="selectDripper('hario')"><img src="assets/dripper_hario_v60_128.png" alt="하리오 V60 유리 드리퍼" width="64" height="64" loading="lazy"><span>하리오 V60</span></button>
+          <button class="dripper-tab" id="card-kalita" onclick="selectDripper('kalita')"><img src="assets/dripper_kalita_glass_128.png" alt="칼리타 유리 드리퍼" width="64" height="64" loading="lazy"><span>칼리타</span></button>
         </div>
         <div class="wizard-selection" id="wizard-dripper-selected"></div>
       </section>
@@ -1575,7 +1602,7 @@
     <div class="brew-modal">
       <div class="modal-header">
         <div>
-          <h2 id="modal-title" style="font-size:16px; font-weight:900;">BREWMAP 3D 라이브 브루잉</h2>
+          <h2 id="modal-title" style="font-size:16px; font-weight:900;">BrewMap 3D 라이브 브루잉</h2>
           <div id="modal-subtitle" style="font-size:11.5px; color:#cbd5e1;">원두 30g · 물 투입량 480g</div><div id="modal-equipment-note" style="font-size:10.5px;color:#f0d6a5;margin-top:3px;"></div>
         </div>
         <div style="display:flex; gap:8px;">

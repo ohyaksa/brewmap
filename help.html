@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BREWMAP — 3D Coffee Brewing Studio v1.654 사용 설명서</title>
+  <title>BrewMap — 3D Coffee Brewing Studio v1.655 사용 설명서</title>
   <style>
     :root {
       --theme-color: #00a1e4;
@@ -288,7 +288,7 @@
 </head>
 <body>
   <div class="section-card" style="max-width:1180px;margin:0 auto 16px;">
-    <div class="section-title">v1.654 주요 사용 흐름 <span class="ver-badge">v1.654</span></div>
+    <div class="section-title">v1.655 주요 사용 흐름 <span class="ver-badge">v1.655</span></div>
     <ol>
       <li><b>드리퍼 선택</b> — 사용할 드리퍼를 먼저 선택합니다.</li>
       <li><b>원두 선택</b> — 원두 데이터베이스에서 원두 종류를 선택합니다.</li>
@@ -299,7 +299,7 @@
       <li><b>추출 및 평가</b> — 3D 추출이 끝나면 관능평가를 입력하고 평가 완료 시 브라우저에 자동 저장합니다. 재사용 레시피는 사용자가 별도로 저장합니다.</li>
     </ol>
     <div class="warn-box"><b>예상·실측 수율·TDS:</b> 예상 TDS/EY는 설정값을 이용한 단순 참고 휴리스틱이며 실제 결과와 다를 수 있습니다. ± 표시는 검증된 통계적 신뢰구간이 아닙니다. 실측 EY는 측정 TDS와 실제 완성 음료 무게로 계산합니다.</div>
-    <div class="warn-box"><b>마스터 인증 범위:</b> 정적 GitHub Pages 앱은 브라우저 간 물리적 기기를 자동으로 식별할 수 없습니다. v1.654 기본 세션은 동일 브라우저의 로컬 저장 기준으로 10일 유지됩니다. 브라우저 간 자동 공유에는 서버 인증 기능이 추가로 필요합니다.</div>
+    <div class="warn-box"><b>마스터 인증 범위:</b> 정적 GitHub Pages 앱은 브라우저 간 물리적 기기를 자동으로 식별할 수 없습니다. v1.655 기본 세션은 동일 브라우저의 로컬 저장 기준으로 10일 유지됩니다. 브라우저 간 자동 공유에는 서버 인증 기능이 추가로 필요합니다.</div>
   </div>
 
   <div class="help-container">
@@ -308,7 +308,7 @@
     <div class="help-header">
       <div>
         <h1 style="font-size:21px; font-weight:900;">
-          ☕ BREWMAP — 3D Coffee Brewing Studio <span class="ver-badge">Version 1.654 공식 설명서</span>
+          ☕ BrewMap — 3D Coffee Brewing Studio <span class="ver-badge">Version 1.655 공식 설명서</span>
         </h1>
         <div style="font-size:12.5px; color:#cbd5e1; margin-top:4px;">
           원두 24종 · 드리퍼 3종 · 7단계 중량 × 4모드 · 바리스타 프리셋 6종 · 그라인더 13종 · 분쇄 설정 2방식 · 실측 TDS/EY
@@ -321,7 +321,7 @@
 
     <!-- 빠른 이동 목차 -->
     <nav class="toc-bar">
-      <a href="#sec-1" class="toc-link">1. v1.654 업데이트 & 파일 구조</a>
+      <a href="#sec-1" class="toc-link">1. v1.655 업데이트 & 파일 구조</a>
       <a href="#sec-2" class="toc-link">2. 마스터 · 지인 초대 모드</a>
       <a href="#sec-3" class="toc-link">3. 막대 · 숫자 직접입력 · 🔒고정</a>
       <a href="#sec-4" class="toc-link">4. 7중량 × 4모드 & 드리퍼 3종</a>
@@ -344,13 +344,14 @@
           <ul>
             <li><b>① <code>coffee_recipes.js</code> (데이터 전용):</b> 원두 24종, 드리퍼 3종 및 원본 프리셋 10종, 바리스타 프리셋 6종, 그라인더 13종, 7중량 × 4모드 계산 규칙이 담긴 순수 데이터베이스입니다.</li>
             <li><b>② <code>index.html</code> (화면·레이아웃 전용):</b> 스크롤을 최소화한 1줄 2개 배치 조작창, 차트 캔버스, 접이식 레시피 보관함이 담긴 경량 UI 파일입니다.</li>
-            <li><b>③ <code>brew_engine.js</code> (작동 엔진·3D·사운드·엑셀 전용):</b> 다이얼 계산, 차트 렌더링, 3D 개념형 추출 애니메이션, 물 따르는 ASMR 효과음, 로컬 기록 저장 및 CSV 백업·복원을 전담합니다. 서버 저장은 v1.654 범위에 포함되지 않습니다.</li>
-            <li><b>④ <code>help.html</code> (현재 파일 — 공식 설명서):</b> v1.654 기능과 레시피 출처 링크를 언제든 열람할 수 있는 독립 매뉴얼입니다.</li>
+            <li><b>③ <code>brew_engine.js</code> (작동 엔진·3D·사운드·엑셀 전용):</b> 다이얼 계산, 차트 렌더링, 3D 개념형 추출 애니메이션, 물 따르는 ASMR 효과음, 로컬 기록 저장 및 CSV 백업·복원을 전담합니다. 서버 저장은 v1.655 범위에 포함되지 않습니다.</li>
+            <li><b>④ <code>help.html</code> (현재 파일 — 공식 설명서):</b> v1.655 기능과 레시피 출처 링크를 언제든 열람할 수 있는 독립 매뉴얼입니다.</li>
+            <li><b>⑤ <code>assets/</code> (이미지·아이콘):</b> BrewMap 앱 아이콘, favicon, 카카오톡 공유 이미지와 블루보틀·하리오·칼리타 드리퍼 이미지를 보관합니다. 파일명은 <code>index.html</code> 및 <code>site.webmanifest</code>에서 그대로 참조합니다.</li>
           </ul>
         </div>
 
         <div class="warn-box">
-          <h3>✨ v1.654에서 추가·개선된 핵심 포인트</h3>
+          <h3>✨ v1.655에서 추가·개선된 핵심 포인트</h3>
           <ul><li>원두 선택 후 권장 시작 설정을 적용하고 잠글 수 있습니다. 전체 잠금 해제 후 개인 취향으로 조절할 수 있습니다.</li><li>추출 완료 시 주전자 주둥이와 물줄기가 사라지고 3초 후 드리퍼가 사라지며 서버 위로 김이 올라옵니다.</li><li>산미·단맛·쓴맛은 0~5(0.5 단위) 강도로, 전체 만족도는 별도로 5점 만점 반별점 별점으로 입력합니다. 재추출 의향과 메모는 자동 저장됩니다.</li></ul>
           <ul>
             <li><b>단계별 레시피 선택:</b> 드리퍼 → 원두 → 일반 또는 특별 바리스타 레시피 순서로 진행합니다. 바리스타 프리셋은 원본 드리퍼·원두량·물량·수온·목표 시간과 푸어 일정을 적용하고 지정된 값을 잠급니다.</li>
@@ -399,7 +400,7 @@
     <!-- ================= 섹션 3: 세팅 조작 & 고정(잠금) 가이드 ================= -->
     <section class="section-card" id="sec-3">
       <div class="section-title">
-        <span>3. v1.654 세팅 조작 가이드 (막대 조절 · 숫자 직접 입력 · 🔒 고정)</span>
+        <span>3. v1.655 세팅 조작 가이드 (막대 조절 · 숫자 직접 입력 · 🔒 고정)</span>
         <span class="section-sub">1줄 2개 컴팩트 배치로 스크롤 최소화</span>
       </div>
 
@@ -1056,7 +1057,7 @@
       <div class="grid-3col">
         <div class="info-box">
           <h3>📊 예상 TDS/EY와 SCA 골든컵 차트</h3>
-          <p>v1.654에서는 세팅 조절 바로 아래에 예상 EY/TDS와 참고용 산미·단맛·쓴맛 막대 그래프를 표시하고, 시간별 성분 용출 개념도, SCA 골든컵 차트, 추가 추출 통계 순으로 확인한 뒤 맨 아래에서 3D 추출을 시작합니다.</p>
+          <p>v1.655에서는 세팅 조절 바로 아래에 예상 EY/TDS와 참고용 산미·단맛·쓴맛 막대 그래프를 표시하고, 시간별 성분 용출 개념도, SCA 골든컵 차트, 추가 추출 통계 순으로 확인한 뒤 맨 아래에서 3D 추출을 시작합니다.</p>
           <ul>
             <li><b>예상값:</b> 레시피 설정값을 넣은 단순 휴리스틱입니다. 실제 원두·로스팅·분쇄·물 성분·물 붓기·배수 상태를 측정한 모델이 아니므로 실측값과 다를 수 있습니다.</li>
             <li><b>표시 오차:</b> 예상 EY의 ±1.8%p, 예상 TDS의 ±0.15%p는 시각적 참고 폭이며 통계적으로 검증된 신뢰구간이 아닙니다.</li>
@@ -1084,7 +1085,7 @@
             <li><b>추가 평가:</b> 다음에도 같은 레시피로 추출할지 선택하고 개인 메모를 남길 수 있습니다.</li>
             <li><b>평가 자동 저장:</b> [평가 완료]를 누르면 현재 추출 세팅·실측값·평가 점수가 브라우저의 <code>localStorage</code>에 자동 저장됩니다.</li>
             <li><b>레시피 설정 저장:</b> 재사용할 레시피는 사용자가 [설정값 저장]을 직접 눌러 보관함에 저장합니다. 해당 세션의 관능평가가 있으면 레시피에도 함께 연결됩니다.</li>
-            <li><b>현재 저장 범위:</b> 자동 추출 기록은 현재 브라우저에 보관됩니다. 다른 브라우저나 기기와 자동 동기화되지 않으며, 서버 저장은 이번 v1.654 범위에서 보류합니다.</li>
+            <li><b>현재 저장 범위:</b> 자동 추출 기록은 현재 브라우저에 보관됩니다. 다른 브라우저나 기기와 자동 동기화되지 않으며, 서버 저장은 이번 v1.655 범위에서 보류합니다.</li>
             <li><b>CSV:</b> 평가 점수와 시음 기록 ID가 저장되며, 이전 버전 CSV의 추가 열이 없는 경우에도 호환 복원하도록 설계했습니다.</li>
           </ul>
         </div>
@@ -1113,7 +1114,7 @@
     <!-- 하단 푸터 및 메인 복귀 버튼 -->
     <div class="footer-bar">
       <p style="font-weight:800; color:#212529; margin-bottom:12px;">
-        BREWMAP — 3D Coffee Brewing Studio v1.654 — 모든 준비가 완료되었습니다.
+        BrewMap — 3D Coffee Brewing Studio v1.655 — 모든 준비가 완료되었습니다.
       </p>
       <a href="index.html" class="btn-3d">← 브루잉 다이얼러(메인 화면)로 돌아가기</a>
     </div>

@@ -1,0 +1,42 @@
+BrewMap v1.655 — Test Report
+Date: 2026-10-30
+
+Scope
+- Minimal updates to the existing v1.654 codebase.
+- 3D canvas meter placement and styling.
+- SVG-based full/half-star rendering.
+- GitHub assets folder, PWA manifest, favicon, Apple touch icon, Open Graph/Kakao preview metadata, and dripper images in selection controls.
+
+Passed checks
+1. JavaScript syntax
+   - node --check brew_engine.js: PASS
+   - node --check coffee_recipes.js: PASS
+2. HTML and asset references
+   - HTML parser: PASS
+   - Duplicate IDs: none
+   - Local image/script/link references: all resolve
+   - PWA manifest icon paths: all resolve
+3. Image files
+   - 15 PNG dimensions checked against the agreed file map: PASS
+   - KakaoTalk preview: 1200 x 630
+   - App icon sizes: 512, 192, 128; Apple touch: 180; favicon: 32
+4. Star rating
+   - Five SVG stars render for a saved 4.5 rating: PASS
+   - Half-star uses an SVG clip path: PASS
+   - Interactive rating creates five star controls and supports the existing 0.5-point values: PASS
+5. 3D rendering logic (mock Canvas context)
+   - Blue Bottle, Hario V60, and Kalita render paths invoked for pour, wait, and outro states without exceptions: PASS
+   - Water divider widths: 11g, 21g, and 111g are equal; 15g is five modulo units: PASS
+   - Time divider: visible at 0.25s and hidden at 0.75s in an active phase; steady after completion: PASS
+6. Compatibility safeguards
+   - coffee_recipes.js byte-identical to v1.654: PASS
+   - TASTING_LOG_STORAGE_KEY, STORAGE_KEY, and MASTER_SESSION_KEY unchanged: PASS
+
+Not completed
+- Actual Chromium/Chrome browser visual test was attempted using Playwright against a local HTTP server. Chromium navigation was blocked by the execution environment with ERR_BLOCKED_BY_ADMINISTRATOR. Therefore this report does not claim a real-browser visual or interaction test.
+- GitHub Pages deployment has not been performed from this workspace. After upload, verify the app icon, dripper thumbnails, canvas meter alignment, and half-star display on desktop and mobile.
+
+Notes
+- All generated image files are under assets/ and referenced by the same filenames.
+- Images are AI-generated product-inspired illustrations based on the agreed references, not official manufacturer photographs.
+- No Firebase/server storage changes are included.

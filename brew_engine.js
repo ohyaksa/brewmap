@@ -1,6 +1,6 @@
 /**
  * brew_engine.js
- * BREWMAP 3D Coffee Brewing Studio engine (v1.654)
+ * BrewMap 3D Coffee Brewing Studio engine (v1.655)
  * - 사용자 인증(마스터 / 지인 모드) 및 권한 관리 안전성 강화
  * - 1줄 2개 배치 조작창 (막대 슬라이더 + 직접 숫자 입력 + 🔒 잠금 시스템)
  * - 7단계 중량 × 4개 추출 모드 실시간 물 투입량 계산
@@ -151,7 +151,7 @@ function completeLogin(masterFlag, nameStr, persistMaster = true) {
       roleBadge.textContent = "👑 마스터 모드";
       roleBadge.className = "role-badge badge-master";
     }
-    if (headerTitle) headerTitle.textContent = "BREWMAP";
+    if (headerTitle) headerTitle.textContent = "BrewMap";
     if (subTitle) subTitle.textContent = "3D Coffee Brewing Studio · 모든 사용자의 레시피를 관리하고 지인 초대 링크를 발급할 수 있습니다.";
     if (inviteBtn) inviteBtn.style.display = "inline-block";
     if (boardTitle) boardTitle.textContent = "👑 마스터 통합 레시피 보관함 (전체 사용자 열람)";
@@ -161,7 +161,7 @@ function completeLogin(masterFlag, nameStr, persistMaster = true) {
       roleBadge.textContent = `☕ ${currentUserName} 바리스타`;
       roleBadge.className = "role-badge badge-guest";
     }
-    if (headerTitle) headerTitle.textContent = "BREWMAP";
+    if (headerTitle) headerTitle.textContent = "BrewMap";
     if (subTitle) subTitle.textContent = `${currentUserName} 님, 환영합니다! 나만의 브루잉 레시피를 설정하고 기록해 보세요.`;
     if (inviteBtn) inviteBtn.style.display = "none";
     if (boardTitle) boardTitle.textContent = `📔 ${currentUserName} 님의 전용 레시피 보관함`;
@@ -483,7 +483,7 @@ function selectDripper(dripperKey, fromPreset = false) {
   document.documentElement.style.setProperty("--theme-dark", d.themeDark);
   document.documentElement.style.setProperty("--theme-soft", d.themeSoft);
   const logoBadge = document.getElementById("logo-badge");
-  if (logoBadge) logoBadge.textContent = d.badge;
+  if (logoBadge && logoBadge.tagName !== "IMG") logoBadge.textContent = d.badge;
   ["bluebottle", "hario", "kalita"].forEach(k => {
     const card = document.getElementById("card-" + k);
     if (card) card.classList.toggle("active", k === dripperKey);
@@ -871,7 +871,7 @@ function onPresetSelectChange() {
     ["bluebottle","hario","kalita"].forEach(k => { const tab=document.getElementById("card-"+k); if(tab){tab.classList.remove("active");tab.disabled=true;} });
   }
   const logo = document.getElementById("logo-badge");
-  if (logo) logo.textContent = (window.DRIPPERS[preset.dripper] || {}).badge || "★";
+  if (logo && logo.tagName !== "IMG") logo.textContent = (window.DRIPPERS[preset.dripper] || {}).badge || "★";
 
   const setNum = (id, value) => { const el=document.getElementById(id); if(el) el.value=value; };
   setNum("dose-num", active.coffeeDose); setNum("dose", active.coffeeDose);
@@ -1360,12 +1360,27 @@ function setTastingLogs(records) {
   try { localStorage.setItem(TASTING_LOG_STORAGE_KEY, JSON.stringify(records.slice(0, 500))); return true; }
   catch (error) { console.error("추출 평가 기록 자동 저장 실패:", error); const status=document.getElementById("tasting-save-status"); if(status) status.textContent="브라우저 저장 공간에 기록을 저장하지 못했습니다. 저장 공간을 확인해 주세요."; return false; }
 }
+let ratingSvgIdCounter = 0;
+function renderRatingStarSvg(fillFraction, extraClass = "") {
+  const fill = Math.max(0, Math.min(1, Number(fillFraction) || 0));
+  const clipId = `brewmap-star-clip-${++ratingSvgIdCounter}`;
+  const clip = fill > 0 && fill < 1
+    ? `<defs><clipPath id="${clipId}"><rect x="0" y="0" width="${(24 * fill).toFixed(2)}" height="24" /></clipPath></defs>`
+    : "";
+  const filled = fill >= 1
+    ? `<path d="M12 2.1l2.95 6.0 6.62.96-4.78 4.66 1.13 6.59L12 17.2l-5.92 3.11 1.13-6.59-4.78-4.66 6.62-.96L12 2.1z" fill="#d69a39" stroke="#b9852b" stroke-width=".65"/>`
+    : fill > 0
+      ? `<path d="M12 2.1l2.95 6.0 6.62.96-4.78 4.66 1.13 6.59L12 17.2l-5.92 3.11 1.13-6.59-4.78-4.66 6.62-.96L12 2.1z" fill="#d69a39" stroke="#b9852b" stroke-width=".65" clip-path="url(#${clipId})"/>`
+      : "";
+  const base = `<path d="M12 2.1l2.95 6.0 6.62.96-4.78 4.66 1.13 6.59L12 17.2l-5.92 3.11 1.13-6.59-4.78-4.66 6.62-.96L12 2.1z" fill="#e1e7e1" stroke="#aeb9af" stroke-width=".75"/>`;
+  return `<svg class="${extraClass}" viewBox="0 0 24 24" role="img" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">${clip}${base}${filled}</svg>`;
+}
 function renderStarRatingText(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return "미평가";
-  let out = "";
-  for (let i=1;i<=5;i++) out += n >= i ? "★" : (n >= i-.5 ? '<span class="half-star">★</span>' : "☆");
-  return `<span class="saved-rating-stars">${out}</span>`;
+  const raw = Number(value);
+  if (!Number.isFinite(raw) || raw <= 0) return "미평가";
+  const rating = Math.max(0.5, Math.min(5, Math.round(raw * 2) / 2));
+  const out = Array.from({length:5}, (_, index) => renderRatingStarSvg(Math.max(0, Math.min(1, rating - index)))).join("");
+  return `<span class="saved-rating-stars" aria-label="전체 만족도 ${rating.toFixed(1)}점">${out}</span>`;
 }
 function renderTastingHistorySummary() {
   const el = document.getElementById("tasting-history-summary");
@@ -1975,10 +1990,11 @@ function setFlavorRatingTouched(key) {
 function renderOverallRatingStars() {
   const container=document.getElementById("overall-rating-stars");
   if (!container) return;
-  const value=Number(currentOverallRating) || 0;
+  const value = currentOverallRating === null ? 0 : Math.max(0, Math.min(5, Number(currentOverallRating) || 0));
   container.innerHTML = Array.from({length:5},(_,idx)=>{
     const star=idx+1, halfValue=star-.5, fullValue=star;
-    return `<span class="rating-star-wrap"><span class="rating-star-base">★</span><button type="button" class="rating-star-half left ${value>=halfValue?"active":""}" onclick="setOverallRating(${halfValue})" aria-label="전체 만족도 ${halfValue}점">★</button><button type="button" class="rating-star-half right ${value>=fullValue?"active":""}" onclick="setOverallRating(${fullValue})" aria-label="전체 만족도 ${fullValue}점">★</button></span>`;
+    const fillFraction=Math.max(0,Math.min(1,value-idx));
+    return `<span class="rating-star-wrap"><span class="rating-star-graphic">${renderRatingStarSvg(fillFraction)}</span><button type="button" class="rating-star-half left" onclick="setOverallRating(${halfValue})" aria-label="전체 만족도 ${halfValue}점 선택" title="${halfValue}점"></button><button type="button" class="rating-star-half right" onclick="setOverallRating(${fullValue})" aria-label="전체 만족도 ${fullValue}점 선택" title="${fullValue}점"></button></span>`;
   }).join("") + `<span class="rating-star-caption">${currentOverallRating === null ? "미평가" : `${Number(currentOverallRating).toFixed(1)} / 5.0`}</span>`;
 }
 function setOverallRating(value, shouldAutoSave = true) {
@@ -2390,7 +2406,7 @@ function openBrewModal() {
 
   const modalTitle = document.getElementById("modal-title");
   const modalSub = document.getElementById("modal-subtitle");
-  if (modalTitle) modalTitle.textContent = `BREWMAP 3D 브루잉 가이드 (${currentDripperLabel || d.fullName})`;
+  if (modalTitle) modalTitle.textContent = `BrewMap 3D 브루잉 가이드 (${currentDripperLabel || d.fullName})`;
   const specialNote = currentBaristaPreset?.requiresSpecialEquipment ? " · 특수 장비 전용 프리셋: 3D 드리퍼 그림은 추출 순서 안내용 개념 표현입니다." : "";
   if (modalSub) modalSub.textContent = `원두 ${dose}g · 물 투입량 ${water}g · ${temp.toFixed(1)}°C · 목표 시간 ${formatSecToKorean(time)}${specialNote}`;
 
@@ -2692,13 +2708,13 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.roundRect(12, 10, W - 24, 54, 10); ctx.fill(); ctx.stroke();
   ctx.fillStyle = "#fff"; ctx.font = "900 13px sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(hudTitle || "BREWMAP 3D 브루잉", cx, 30);
+  ctx.fillText(hudTitle || "BrewMap 3D 브루잉", cx, 30);
   ctx.fillStyle = pouring ? "#a5e7fa" : "#ffe2a6"; ctx.font = "700 10.5px sans-serif";
   ctx.fillText(hudSub || "커피층의 팽창과 배수 변화를 표현합니다", cx, 48);
   ctx.restore();
 
   // Server and coffee surface
-  const srvTopY = 270, srvBotY = 365, srvTopW = 52, srvBotW = 78;
+  const srvTopY = 326, srvBotY = 428, srvTopW = 52, srvBotW = 78;
   const beverageRatio = Math.min(0.78, waterRatio * 0.78);
   const liquidH = (srvBotY - srvTopY) * beverageRatio;
   const liquidTopY = srvBotY - liquidH;
@@ -2721,7 +2737,7 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
 
   // 물줄기 도착점을 현재 원두량과 팽창/함몰이 반영된 커피층 중앙 표면에 일치시킵니다.
   const normalizedDoseForStream = Math.max(0, Math.min(1, (dose - 15) / 35));
-  const bedBaseYForStream = 252 - 34 - normalizedDoseForStream * 30;
+  const bedBaseYForStream = 220 - 34 - normalizedDoseForStream * 30;
   const streamTargetY = bedBaseYForStream - swell + crater;
   ctx.save();
   ctx.globalAlpha *= kettleAlpha;
@@ -2730,7 +2746,7 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
   ctx.restore();
 
   // Dripper geometry (transparent glass). Different inner profiles per dripper.
-  const topY = 128, bottomY = 252, topHalf = 91;
+  const topY = 104, bottomY = 220, topHalf = 91;
   const bottomHalf = visualDripper === "hario" ? 22 : (visualDripper === "kalita" ? 62 : 38);
   const shapePath = () => {
     ctx.beginPath();
@@ -2889,9 +2905,10 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
       ctx.strokeStyle = `rgba(232,244,238,${0.28+steam*0.38})`;
       ctx.lineWidth = 3.2 - i*.35;
       ctx.lineCap = "round";
+      const steamBaseY = Math.min(srvBotY - 6, Math.max(srvTopY + 8, liquidTopY - 2));
       ctx.beginPath();
-      ctx.moveTo(baseX, 285);
-      ctx.bezierCurveTo(baseX-10+drift, 270-rise*.25, baseX+12-drift, 260-rise*.65, baseX+drift, 245-rise);
+      ctx.moveTo(baseX, steamBaseY);
+      ctx.bezierCurveTo(baseX-10+drift, steamBaseY-15-rise*.25, baseX+12-drift, steamBaseY-28-rise*.65, baseX+drift, steamBaseY-40-rise);
       ctx.stroke();
     }
     ctx.restore();
@@ -2904,7 +2921,7 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
       elapsed >= Number(stage.pourEndSec || 0) && elapsed < Number(stage.endSec || 0)
     ) : null;
     if (activeWaitStage) waitRemainSec = Math.max(0, Math.ceil(Number(activeWaitStage.endSec) - elapsed));
-    const waitW = 132, waitH = 48, waitX = cx - waitW / 2, waitY = 303;
+    const waitW = 132, waitH = 48, waitX = cx - waitW / 2, waitY = srvTopY + (srvBotY - srvTopY - waitH) / 2;
     ctx.save();
     ctx.fillStyle = "rgba(5,13,20,.82)"; ctx.strokeStyle = "rgba(214,168,90,.95)"; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.roundRect(waitX, waitY, waitW, waitH, 9); ctx.fill(); ctx.stroke();
@@ -2915,26 +2932,63 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
     ctx.restore();
   }
 
-  // Left: current / target water. Right: elapsed / target time.
-  const meterY = 372, meterH = 60, meterGap = 10, meterX = 12;
-  const meterW = (W - meterX * 2 - meterGap) / 2;
+  // 드리퍼와 서버 사이의 가운데 영역: 좌측 물량, 우측 시간. 별도 박스 없이 중앙 정렬합니다.
   const totalWater = Math.max(1, Number(document.getElementById("water-num")?.value) || water);
   const totalTime = Math.max(1, Number(document.getElementById("time-num")?.value) || 210);
-  const drawMeter = (x, stroke, label, primary, secondary, primaryColor) => {
+  const waterCenterX = W * 0.25;
+  const timeCenterX = W * 0.75;
+  const currentRowY = 246;
+  const separatorY = 263;
+  const targetRowY = 292;
+  const drawCenteredValueLabel = (centerX, baselineY, valueText, labelText, valueColor, labelColor) => {
     ctx.save();
-    const grad = ctx.createLinearGradient(0, meterY, 0, meterY + meterH);
-    grad.addColorStop(0, "#222b32"); grad.addColorStop(1, "#070b0e");
-    ctx.fillStyle = grad; ctx.strokeStyle = stroke; ctx.lineWidth = 1.7;
-    ctx.beginPath(); ctx.roundRect(x, meterY, meterW, meterH, 9); ctx.fill(); ctx.stroke();
-    ctx.textAlign = "left"; ctx.fillStyle = stroke; ctx.font = "800 9px sans-serif";
-    ctx.fillText(label, x + 10, meterY + 13);
-    ctx.fillStyle = primaryColor; ctx.font = "900 17px monospace";
-    ctx.fillText(primary, x + 10, meterY + 34);
-    ctx.fillStyle = "#c4d0d6"; ctx.font = "700 8.5px sans-serif";
-    ctx.fillText(secondary, x + 10, meterY + 50);
+    ctx.textAlign = "left";
+    ctx.font = "900 17px monospace";
+    const valueWidth = ctx.measureText(valueText).width;
+    ctx.font = "800 8px sans-serif";
+    const labelWidth = ctx.measureText(labelText).width;
+    const gap = 4;
+    const startX = centerX - (valueWidth + gap + labelWidth) / 2;
+    ctx.font = "900 17px monospace";
+    ctx.fillStyle = valueColor;
+    ctx.fillText(valueText, startX, baselineY);
+    ctx.font = "800 8px sans-serif";
+    ctx.fillStyle = labelColor;
+    ctx.fillText(labelText, startX + valueWidth + gap, baselineY - 1);
     ctx.restore();
   };
-  drawMeter(meterX, pouring ? "#55c5ee" : "#3289bd", "현재 물 투입량", `${Math.round(currentWater)} g`, `총 목표 ${Math.round(totalWater)} g`, "#70d8f5");
-  const elapsedDisplay = Math.max(0, elapsed);
-  drawMeter(meterX + meterW + meterGap, waiting ? "#d6a85a" : "#419c68", "경과 시간", formatMMSS(elapsedDisplay), `총 목표 ${formatMMSS(totalTime)}`, "#9ce4bc");
+
+  drawCenteredValueLabel(waterCenterX, currentRowY, `${Math.round(currentWater)}g`, "투입량", "#43c8f2", "#8bdcf3");
+  drawCenteredValueLabel(waterCenterX, targetRowY, `${Math.round(totalWater)}g`, "목표 물량", "#93dff2", "#93dff2");
+  drawCenteredValueLabel(timeCenterX, currentRowY, formatMMSS(Math.max(0, elapsed)), "경과 시간", "#63d69b", "#9ce4bc");
+  drawCenteredValueLabel(timeCenterX, targetRowY, formatMMSS(totalTime), "목표 시간", "#a0e9bd", "#a0e9bd");
+
+  // 물량 구분선: 현재 누적 투입량의 일의 자리(10g 단위 반복)에 따라 길이가 변합니다.
+  const waterUnits = Math.round(currentWater) % 10;
+  const waterLineWidth = waterUnits * 6.8;
+  if (waterLineWidth > 0) {
+    ctx.save();
+    ctx.strokeStyle = "#43c8f2";
+    ctx.lineWidth = 2.8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(waterCenterX - waterLineWidth / 2, separatorY);
+    ctx.lineTo(waterCenterX + waterLineWidth / 2, separatorY);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 시간 구분선: 추출이 진행되는 동안 0.5초 표시 / 0.5초 숨김을 반복합니다.
+  const timeLineIsOn = !((pouring || waiting) && (Math.floor(Math.max(0, elapsed) * 2) % 2 === 1));
+  if (timeLineIsOn) {
+    ctx.save();
+    ctx.strokeStyle = "#63d69b";
+    ctx.lineWidth = 2.8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(timeCenterX - 35, separatorY);
+    ctx.lineTo(timeCenterX + 35, separatorY);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
