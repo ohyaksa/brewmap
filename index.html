@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BREWMAP — 3D Coffee Brewing Studio v1.653</title>
+  <title>BREWMAP — 3D Coffee Brewing Studio v1.654</title>
   <style>
     :root {
       --theme-color: #00a1e4;
@@ -1107,11 +1107,39 @@
     .predicted-flavor-title { color:#405547; font-size:12.5px; font-weight:900; margin-bottom:4px; }
     .predicted-flavor-caption { color:#7a897d; font-size:10.5px; margin-bottom:6px; }
     #predictedFlavorChart { display:block; width:100%; height:158px; max-width:100%; border:1px solid #e3eae4; border-radius:10px; background:#fff; }
+    #flavorChart { display:block; width:100%; height:220px; max-width:100%; border:1px solid #e3eae4; border-radius:10px; background:#fff; }
     .postbrew-flavor-history { margin-top:10px; padding:10px; border:1px solid #e1e9e2; border-radius:10px; background:#fff; }
     .brew-start-actions { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:10px; margin-top:16px; padding-top:14px; border-top:1px solid #e3ebe4; }
     .brew-start-actions button { min-height:46px; }
     @media(max-width:520px) { .brew-start-actions { grid-template-columns:1fr; } }
     .tasting-save-status { margin-top:7px; font-size:11px; font-weight:800; color:#42634a; }
+    .overall-rating-panel { margin-top:10px; padding:11px; border:1px solid #e1e9e2; border-radius:11px; background:#fff; }
+    .overall-rating-stars { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:8px; }
+    .rating-star-wrap { position:relative; display:inline-block; width:34px; height:36px; font-size:32px; line-height:36px; }
+    .rating-star-base { color:#d9e0da; position:absolute; inset:0; text-align:center; pointer-events:none; }
+    .rating-star-half { position:absolute; top:0; width:50%; height:36px; padding:0; margin:0; border:0; border-radius:0; background:transparent; color:transparent; font-size:32px; line-height:36px; overflow:hidden; cursor:pointer; z-index:2; }
+    .rating-star-half.active { color:#d69a39; }
+    .rating-star-half.left { left:0; text-align:left; }
+    .rating-star-half.right { right:0; text-align:right; }
+    .rating-star-caption { margin-left:7px; color:#526456; font-size:12px; font-weight:900; }
+    .saved-rating-stars { color:#d69a39; letter-spacing:1px; font-size:13px; white-space:nowrap; }
+    .half-star { background:linear-gradient(90deg,#d69a39 50%,#cbd3cc 50%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .tasting-extra-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:9px; margin-top:10px; }
+    .tasting-extra-grid label { display:flex; flex-direction:column; gap:5px; color:#526456; font-size:11px; font-weight:850; }
+    .tasting-extra-grid select,.tasting-extra-grid textarea { width:100%; border:1px solid #d8e2d9; border-radius:9px; padding:9px; background:#fff; color:#243329; font:inherit; }
+    .tasting-extra-grid textarea { min-height:66px; resize:vertical; }
+    .recommend-overlay { position:fixed; inset:0; z-index:11000; display:none; align-items:center; justify-content:center; padding:14px; background:rgba(9,20,14,.58); }
+    .recommend-overlay.open { display:flex; }
+    .recommend-dialog { width:min(100%,520px); max-height:90vh; overflow:auto; background:#fff; border:1px solid #dce8dd; border-radius:16px; padding:17px; box-shadow:0 18px 55px rgba(0,0,0,.25); }
+    .recommend-dialog h3 { color:#294f33; font-size:17px; margin-bottom:6px; }
+    .recommend-dialog p { color:#66766a; line-height:1.55; font-size:12px; }
+    .recommend-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:13px 0; }
+    .recommend-form-grid label { display:flex; flex-direction:column; gap:5px; color:#526456; font-size:11px; font-weight:850; }
+    .recommend-form-grid input,.recommend-form-grid select { width:100%; min-width:0; border:1px solid #d8e2d9; border-radius:9px; padding:10px; background:#fff; color:#243329; font:inherit; }
+    .recommend-preview { padding:10px; background:#f3f8f3; border:1px solid #dce9dd; border-radius:10px; color:#3d5742; font-size:11.5px; line-height:1.6; }
+    .recommend-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
+    .recommend-actions button { flex:1 1 150px; min-height:42px; }
+    @media(max-width:520px) { .tasting-extra-grid,.recommend-form-grid { grid-template-columns:1fr; } }
     @media(max-width:700px) { .metrics-pair-six { grid-template-columns:repeat(2,minmax(0,1fr)); } .postbrew-measured-bar { grid-template-columns:1fr; } }
 
   </style>
@@ -1160,7 +1188,7 @@
         <div>
           <h1>
             <span id="header-barista-title">BREWMAP</span>
-            <span class="version-badge" id="app-version">v1.653</span>
+            <span class="version-badge" id="app-version">v1.654</span>
             <span id="user-role-badge" class="role-badge badge-guest">게스트</span>
           </h1>
           <div class="subtitle" id="welcome-subtitle">3D Coffee Brewing Studio · Recipe Lab · Precision Brewing</div>
@@ -1342,7 +1370,7 @@
                 <span class="unit-txt">g</span>
                 <button class="step-btn" id="plus-dose" onclick="stepControl('dose', 1)">+</button>
               </div>
-              <input type="range" id="dose" class="coarse-slider" min="10" max="60" step="5" value="30" oninput="onSliderInput('dose')" />
+              <input type="range" id="dose" class="coarse-slider" min="10" max="60" step="0.5" value="30" oninput="onSliderInput('dose')" />
               <div class="ctrl-sub-hint"><span>막대 5g 단위</span><span id="dose-label">30g</span></div>
             </div>
 
@@ -1503,6 +1531,37 @@
 
   </div>
 
+  <div class="recommend-overlay" id="origin-recommend-modal" role="dialog" aria-modal="true" aria-labelledby="origin-recommend-title" onclick="if(event.target===this)closeOriginRecommendation()">
+    <div class="recommend-dialog">
+      <h3 id="origin-recommend-title">원두 권장 레시피</h3>
+      <p id="origin-recommend-description">선택한 원두에 맞는 출발 설정을 적용할 수 있습니다.</p>
+      <div class="recommend-form-grid">
+        <label>사용할 원두 중량 (g)
+          <input type="number" id="recommend-dose" min="10" max="60" step="0.5" value="20" inputmode="decimal" />
+        </label>
+        <label>권장 농도 출발 비율
+          <select id="recommend-ratio">
+            <option value="14">진하게 · 1:14</option>
+            <option value="16">표준 · 1:16</option>
+            <option value="18">연하게 · 1:18</option>
+          </select>
+        </label>
+        <label>권장 추출 수온 (°C)
+          <input type="number" id="recommend-temp" min="80" max="100" step="0.5" value="95" />
+        </label>
+        <label>사용 그라인더 모델
+          <select id="recommend-grinder" onchange="updateRecommendationPreview()"></select>
+        </label>
+      </div>
+      <div class="recommend-preview" id="recommend-preview">원두 권장 설정 미리보기</div>
+      <p style="margin-top:8px;font-size:10.5px;">권장 비율과 수온은 원두 정보에 등록된 추천 시작값입니다. 그라인더 눈금은 선택한 모델의 기준 시작값이며 해당 원두에 대한 실측 최적값을 보장하지 않습니다.</p>
+      <div class="recommend-actions">
+        <button class="btn-3d" type="button" onclick="applyOriginRecommendation()">권장 설정 적용 및 고정</button>
+        <button class="excel-btn" type="button" onclick="chooseManualBeanSetup()">직접 설정하기</button>
+      </div>
+    </div>
+  </div>
+
   <div class="help-overlay" id="inlineHelpModal" role="dialog" aria-modal="true" aria-labelledby="inlineHelpTitle" onclick="if(event.target===this)closeInlineHelp()">
     <div class="help-dialog">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;"><h3 id="inlineHelpTitle">기능 도움말</h3><button class="help-btn" onclick="closeInlineHelp()" aria-label="닫기">×</button></div>
@@ -1558,25 +1617,43 @@
           <section class="postbrew-evaluation-panel" id="postbrew-evaluation-panel" hidden>
             <div class="postbrew-heading">
               <div>
-                <strong>☕ 추출 완료 · 관능평가</strong>
-                <div class="ctrl-sub-hint">커피를 시음한 뒤 점수를 입력하세요. 평가 완료를 누르면 추출 기록에 자동 저장됩니다.</div>
+                <strong>☕ 추출 완료 · 개인 관능평가</strong>
+                <div class="ctrl-sub-hint">예상 향미와 실제 느낀 맛의 강도를 비교하고, 이번 커피의 전체 만족도를 별도로 평가합니다.</div>
               </div>
-              <span class="badge badge-good">추출 후 기록</span>
-            </div>
-            <div class="flavor-inputs postbrew-flavor-inputs">
-              <div class="flavor-input"><label for="flavor-sour">산미 <output id="flavor-sour-value">미평가</output></label><input id="flavor-sour" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('sour')"></div>
-              <div class="flavor-input"><label for="flavor-sweet">단맛 <output id="flavor-sweet-value">미평가</output></label><input id="flavor-sweet" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('sweet')"></div>
-              <div class="flavor-input"><label for="flavor-bitter">쓴맛 <output id="flavor-bitter-value">미평가</output></label><input id="flavor-bitter" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('bitter')"></div>
+              <span class="badge badge-good">입력 즉시 자동 저장</span>
             </div>
             <div class="postbrew-flavor-history">
-              <div style="font-weight:850;font-size:12px;color:#526456;">입력한 관능평가 그래프</div>
-              <div id="flavor-latest-summary" class="ctrl-sub-hint">산미·단맛·쓴맛 평가를 입력하면 여기에 표시됩니다.</div>
-              <canvas id="flavorChart" class="chart-canvas" width="420" height="170" aria-label="실제 시음 후 산미 단맛 쓴맛 관능평가 그래프"></canvas>
+              <div style="font-weight:900;font-size:12px;color:#526456;">① 예상 향미와 실제 맛의 강도 비교 (0~5)</div>
+              <div id="flavor-latest-summary" class="ctrl-sub-hint">예상 막대와 실제 평가 막대를 함께 표시합니다. 실제 평가는 아래에서 입력하세요.</div>
+              <canvas id="flavorChart" class="chart-canvas" width="520" height="220" aria-label="예상 산미 단맛 쓴맛과 실제 맛의 강도 비교 그래프"></canvas>
+            </div>
+            <div class="flavor-inputs postbrew-flavor-inputs">
+              <div class="flavor-input"><label for="flavor-sour">실제 산미 강도 <output id="flavor-sour-value">미평가</output></label><input id="flavor-sour" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('sour')"></div>
+              <div class="flavor-input"><label for="flavor-sweet">실제 단맛 강도 <output id="flavor-sweet-value">미평가</output></label><input id="flavor-sweet" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('sweet')"></div>
+              <div class="flavor-input"><label for="flavor-bitter">실제 쓴맛 강도 <output id="flavor-bitter-value">미평가</output></label><input id="flavor-bitter" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('bitter')"></div>
+            </div>
+            <div class="overall-rating-panel">
+              <div style="font-weight:900;font-size:12px;color:#526456;">② 이번에 내린 커피의 전체 만족도</div>
+              <div class="ctrl-sub-hint">산미·단맛·쓴맛의 강도와 별개로, 이번 커피가 전반적으로 얼마나 마음에 들었는지 평가합니다.</div>
+              <div class="overall-rating-stars" id="overall-rating-stars" aria-label="전체 만족도 0.5점 단위 별점"></div>
+            </div>
+            <div class="tasting-extra-grid">
+              <label>③ 다음에도 이 레시피로 추출하고 싶습니까?
+                <select id="tasting-rebrew-intent" onchange="scheduleTastingAutoSave()">
+                  <option value="">선택하지 않음</option>
+                  <option value="repeat">다시 추출하고 싶다</option>
+                  <option value="adjust">조금 수정해서 다시 추출하고 싶다</option>
+                  <option value="no">다시 추출하고 싶지 않다</option>
+                </select>
+              </label>
+              <label>④ 개인 메모
+                <textarea id="tasting-personal-note" maxlength="1000" placeholder="예: 산미는 좋았지만 후반부 쓴맛이 조금 강했다." oninput="scheduleTastingAutoSave()"></textarea>
+              </label>
             </div>
             <div class="measured-bar postbrew-measured-bar">
               <strong>🔬 실제 측정값 (선택)</strong>
-              <label>TDS <input type="number" id="measured-tds" class="mini-input" min="0.1" max="5" step="0.01" placeholder="미측정" oninput="updateDial()"> %</label>
-              <label>완성 음료 무게 <input type="number" id="measured-bev" class="mini-input" min="1" max="1500" step="1" placeholder="미측정" oninput="updateDial()"> g</label>
+              <label>TDS <input type="number" id="measured-tds" class="mini-input" min="0.1" max="5" step="0.01" placeholder="미측정" oninput="updateDial();scheduleTastingAutoSave()"> %</label>
+              <label>완성 음료 무게 <input type="number" id="measured-bev" class="mini-input" min="1" max="1500" step="1" placeholder="미측정" oninput="updateDial();scheduleTastingAutoSave()"> g</label>
               <span id="measured-ey-result">실측 TDS와 음료 무게 입력 시 실측 EY 계산</span>
             </div>
             <div class="postbrew-actions">

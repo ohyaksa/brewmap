@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * coffee_recipes.js — [v1.652 compatible data / Part 1]
+ * coffee_recipes.js — [v1.654 compatible data / Part 1]
  * 드립 커피 추출 프로그램용 원두별 레시피 · 드리퍼 프로파일 · 추출 모드 및 그라인더 데이터
  * 기준일: 2026-10-30
  *
@@ -1984,7 +1984,7 @@ function validateCoffeeRecipesData() {
 window.validateCoffeeRecipesData = validateCoffeeRecipesData;
 
 const CoffeeRecipesData = {
-  version: "2026-10-30-v1.652",
+  version: "2026-10-30-v1.654",
   WEIGHTS: WEIGHTS,
   BREW_MODES: BREW_MODES,
   BREW_MODE_TABLE: BREW_MODE_TABLE,

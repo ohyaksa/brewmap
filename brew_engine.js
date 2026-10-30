@@ -1,6 +1,6 @@
 /**
  * brew_engine.js
- * BREWMAP 3D Coffee Brewing Studio engine (v1.652)
+ * BREWMAP 3D Coffee Brewing Studio engine (v1.654)
  * - 사용자 인증(마스터 / 지인 모드) 및 권한 관리 안전성 강화
  * - 1줄 2개 배치 조작창 (막대 슬라이더 + 직접 숫자 입력 + 🔒 잠금 시스템)
  * - 7단계 중량 × 4개 추출 모드 실시간 물 투입량 계산
@@ -30,6 +30,10 @@ let brewCompletionPromptShown = false;
 let currentBrewSessionId = null;
 let latestTastingRecord = null;
 let tastingSkipped = false;
+let tastingAutoSaveTimer = null;
+let currentOverallRating = null;
+let brewOutroAnimReq = null;
+let recommendedSettingsLocked = false;
 let uploadMode = "default";
 
 // 세팅 고정(잠금) 상태 객체
@@ -77,6 +81,7 @@ window.addEventListener("DOMContentLoaded", () => {
     // 3) 초기 다이얼 연동
     applyOriginMatrix();
     updateFlavorChart();
+    renderOverallRatingStars();
     renderRecipeBoard();
     renderTastingHistorySummary();
   } catch (err) {
@@ -515,6 +520,8 @@ function onOriginChange() {
   const originSel = document.getElementById("origin-select");
   if (!originSel || !originSel.value || !(window.ORIGIN_DB || {})[originSel.value]) return;
   wizardState.bean = true;
+  if (recommendedSettingsLocked && isAllLocked) toggleLockAll();
+  recommendedSettingsLocked = false;
   // 원두를 바꾸면 이전 레시피 유형/바리스타 잠금을 해제하고 다시 선택하도록 합니다.
   if (currentBaristaPresetId) clearBaristaPreset(false);
   currentBaristaPresetId = null;
@@ -531,6 +538,119 @@ function onOriginChange() {
   if (presetSel) presetSel.value = "common_mode";
   refreshWizard();
   applyOriginMatrix();
+  openOriginRecommendation();
+}
+
+function openOriginRecommendation() {
+  const originKey = document.getElementById("origin-select")?.value || "";
+  const origin = (window.ORIGIN_DB || {})[originKey];
+  const modal = document.getElementById("origin-recommend-modal");
+  if (!origin || !modal) return;
+  const title = document.getElementById("origin-recommend-title");
+  const desc = document.getElementById("origin-recommend-description");
+  if (title) title.textContent = `${origin.name} · 권장 레시피`;
+  if (desc) desc.textContent = `${origin.roastLevel || origin.roast || "선택 원두"} 특성에 맞춘 출발 설정을 적용할 수 있습니다. 원두 중량을 먼저 입력해 주세요.`;
+  const dose = document.getElementById("recommend-dose");
+  if (dose) dose.value = String(Number(document.getElementById("dose-num")?.value) || 20);
+  const ratio = Number(origin.defaultRatio || origin.ratio || 16);
+  const ratioOption = [14,16,18].reduce((best, value) => Math.abs(value-ratio) < Math.abs(best-ratio) ? value : best, 16);
+  const ratioSel = document.getElementById("recommend-ratio");
+  if (ratioSel) ratioSel.value = String(ratioOption);
+  const temp = document.getElementById("recommend-temp");
+  if (temp) temp.value = Number(origin.recommendedTemperature?.startC || origin.temp || 94).toFixed(1);
+  const recommendGrinder = document.getElementById("recommend-grinder");
+  const mainGrinder = document.getElementById("grinder-select");
+  if (recommendGrinder && mainGrinder) {
+    recommendGrinder.innerHTML = mainGrinder.innerHTML;
+    recommendGrinder.value = mainGrinder.value;
+  }
+  updateRecommendationPreview();
+  modal.classList.add("open");
+}
+
+function closeOriginRecommendation() {
+  document.getElementById("origin-recommend-modal")?.classList.remove("open");
+}
+
+function updateRecommendationPreview() {
+  const preview = document.getElementById("recommend-preview");
+  if (!preview) return;
+  const origin = (window.ORIGIN_DB || {})[document.getElementById("origin-select")?.value || ""];
+  const dose = Number(document.getElementById("recommend-dose")?.value) || 20;
+  const ratio = Number(document.getElementById("recommend-ratio")?.value) || 16;
+  const temp = Number(document.getElementById("recommend-temp")?.value) || Number(origin?.temp) || 94;
+  const grinderId = document.getElementById("recommend-grinder")?.value || "";
+  const grinder = (window.COFFEE_GRINDERS || []).find(item => item.id === grinderId);
+  const info = window.getGrinderDisplayInfo ? window.getGrinderDisplayInfo(grinderId) : {};
+  const startVal = info.startVal ?? info.standardPourOverSetting ?? "모델 기준 시작값 없음";
+  preview.textContent = `원두 ${dose}g · 권장 비율 1:${ratio} · 권장 수온 ${temp.toFixed(1)}°C · 그라인더 ${grinder?.name || "미선택"} · 모델 시작 기준 ${startVal}${info.unitLabel ? ` ${info.unitLabel}` : ""}. 그라인더 시작값은 모델 기준 참고치입니다.`;
+}
+
+function chooseManualBeanSetup() {
+  closeOriginRecommendation();
+  if (recommendedSettingsLocked && isAllLocked) toggleLockAll();
+  recommendedSettingsLocked = false;
+  applyOriginMatrix();
+}
+
+function applyOriginRecommendation() {
+  const origin = (window.ORIGIN_DB || {})[document.getElementById("origin-select")?.value || ""];
+  if (!origin) return;
+  const doseInput = document.getElementById("recommend-dose");
+  const dose = Number(doseInput?.value);
+  if (!Number.isFinite(dose) || dose < 10 || dose > 60) {
+    alert("원두 중량은 10~60g 범위에서 입력해 주세요.");
+    doseInput?.focus();
+    return;
+  }
+  const ratio = Number(document.getElementById("recommend-ratio")?.value) || 16;
+  const modeKey = ratio <= 14 ? "strong" : (ratio >= 18 ? "light" : "standard");
+  const temp = Number(document.getElementById("recommend-temp")?.value) || Number(origin.recommendedTemperature?.startC || origin.temp || 94);
+  if (!Number.isFinite(temp) || temp < 80 || temp > 100) { alert("추출 수온은 80~100°C 범위에서 입력해 주세요."); return; }
+  const weights = window.WEIGHTS || [15,20,25,30,35,40,50];
+  currentWeightIdx = weights.reduce((best, value, idx) => Math.abs(value-dose) < Math.abs(weights[best]-dose) ? idx : best, 0);
+  currentModeKey = modeKey;
+  const setVal = (id, value) => { const el=document.getElementById(id); if(el) el.value=String(value); };
+  setVal("dose-num", dose); setVal("dose", dose);
+  const waterResult = window.calculateBrewModeWater ? window.calculateBrewModeWater(dose, modeKey) : { totalInputWaterG: Math.round(dose*ratio) };
+  setVal("water-num", waterResult.totalInputWaterG); setVal("water", waterResult.totalInputWaterG);
+  setVal("temp-num", temp.toFixed(1)); setVal("temp", temp);
+  const timeValues = origin.times || [150,170,190,210,225,240,265];
+  const targetTime = Number(timeValues[currentWeightIdx]) || 210;
+  setVal("time-num", targetTime); setVal("time", targetTime);
+  document.querySelectorAll("#weight-btns-wrap button").forEach((btn, idx) => btn.classList.toggle("active", idx === currentWeightIdx));
+  ["strong","standard","light","bypass"].forEach(key => document.getElementById(`mbtn-${key}`)?.classList.toggle("active", key === modeKey));
+  const generalRadio = document.querySelector('input[name="recipe-type"][value="general"]');
+  const baristaRadio = document.querySelector('input[name="recipe-type"][value="barista"]');
+  if (generalRadio) generalRadio.checked = true;
+  if (baristaRadio) baristaRadio.checked = false;
+  const generalOptions = document.getElementById("general-recipe-options");
+  const baristaOptions = document.getElementById("barista-recipe-options");
+  if (generalOptions) generalOptions.hidden = false;
+  if (baristaOptions) baristaOptions.hidden = true;
+  recipeType = "general";
+  currentBaristaPresetId = null;
+  currentBaristaPreset = null;
+  wizardState.recipe = true;
+  wizardState.grind = true;
+  const grinderId = document.getElementById("recommend-grinder")?.value || "";
+  const mainGrinder = document.getElementById("grinder-select");
+  if (mainGrinder && grinderId && Array.from(mainGrinder.options).some(o => o.value === grinderId)) mainGrinder.value = grinderId;
+  const registeredRadio = document.querySelector('input[name="grinder-mode"][value="registered"]');
+  if (registeredRadio) registeredRadio.checked = true;
+  if (mainGrinder) onGrinderChange();
+  // 추천 적용 상태는 전체 잠금으로 고정하며, 사용자는 전체 잠금 해제 후 개인 취향에 맞게 조절할 수 있습니다.
+  isAllLocked = false;
+  Object.keys(lockStates).forEach(key => lockStates[key] = false);
+  toggleLockAll();
+  recommendedSettingsLocked = true;
+  const diagTitle = document.getElementById("diag-title");
+  const diagDesc = document.getElementById("diag-desc");
+  if (diagTitle) diagTitle.textContent = `[${origin.name}] 권장 시작 설정`;
+  if (diagDesc) diagDesc.textContent = `원두 ${dose}g · 1:${ratio} · ${temp.toFixed(1)}°C · ${targetTime}초. 권장 설정이 적용되어 잠겼습니다. 전체 잠금을 해제하면 개인 취향으로 변경할 수 있습니다.`;
+  closeOriginRecommendation();
+  refreshWizard();
+  updateDial();
 }
 
 function initWizard() {
@@ -628,6 +748,8 @@ function clearBaristaPreset(updateUi = true) {
 }
 
 function selectRecipeType(type) {
+  if (recommendedSettingsLocked && isAllLocked) toggleLockAll();
+  recommendedSettingsLocked = false;
   if (!wizardState.dripper || !wizardState.bean) {
     alert("먼저 드리퍼와 원두를 선택해 주세요.");
     return;
@@ -1229,14 +1351,21 @@ function drawScaChart(ey, tds, themeColor, themeDark, estimatedEy = null, estima
 // ============================================================================
 // 7. 앱 내부 누적 저장 + 단일 엑셀(.csv) 강제 저장 및 백업·복원 시스템
 // ============================================================================
-const TASTING_LOG_STORAGE_KEY = "brewmap_tasting_logs_v1652";
+const TASTING_LOG_STORAGE_KEY = "brewmap_tasting_logs_v1652"; // v1.652 이후 기존 기록 키를 유지하여 호환
 function getTastingLogs() {
   try { const data = JSON.parse(localStorage.getItem(TASTING_LOG_STORAGE_KEY) || "[]"); return Array.isArray(data) ? data : []; }
   catch (error) { console.warn("추출 평가 기록을 읽지 못했습니다.", error); return []; }
 }
 function setTastingLogs(records) {
   try { localStorage.setItem(TASTING_LOG_STORAGE_KEY, JSON.stringify(records.slice(0, 500))); return true; }
-  catch (error) { console.error("추출 평가 기록 자동 저장 실패:", error); alert("브라우저 저장 공간에 기록을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요."); return false; }
+  catch (error) { console.error("추출 평가 기록 자동 저장 실패:", error); const status=document.getElementById("tasting-save-status"); if(status) status.textContent="브라우저 저장 공간에 기록을 저장하지 못했습니다. 저장 공간을 확인해 주세요."; return false; }
+}
+function renderStarRatingText(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "미평가";
+  let out = "";
+  for (let i=1;i<=5;i++) out += n >= i ? "★" : (n >= i-.5 ? '<span class="half-star">★</span>' : "☆");
+  return `<span class="saved-rating-stars">${out}</span>`;
 }
 function renderTastingHistorySummary() {
   const el = document.getElementById("tasting-history-summary");
@@ -1246,7 +1375,11 @@ function renderTastingHistorySummary() {
   if (!visible.length) { el.textContent = "아직 자동 저장된 추출·관능평가 기록이 없습니다."; return; }
   const r = visible[0];
   const f = r.flavorRatings || {};
-  el.textContent = `최근 자동 저장: ${r.date} · ${r.beanName || "원두"} / ${r.dripperLabel || r.dripper} · 산미 ${f.sour ?? "—"}, 단맛 ${f.sweet ?? "—"}, 쓴맛 ${f.bitter ?? "—"} · 총 ${visible.length}건`;
+  const hasOverall = r.overallRating !== null && r.overallRating !== undefined && r.overallRating !== "" && Number.isFinite(Number(r.overallRating));
+  const satisfaction = hasOverall ? ` · 전체 만족도 ${renderStarRatingText(Number(r.overallRating))} (${Number(r.overallRating).toFixed(1)}/5)` : " · 전체 만족도 미평가";
+  const intent = r.rebrewIntent ? ` · 재추출: ${({repeat:"다시 추출",adjust:"수정 후 추출",no:"재추출 안 함"})[r.rebrewIntent] || r.rebrewIntent}` : "";
+  // 이 영역은 별점 HTML을 표시하므로, 저장 데이터에서 오는 텍스트는 모두 HTML 이스케이프합니다.
+  el.innerHTML = `최근 기록: ${escapeRecipeHtml(r.date || "")} · ${escapeRecipeHtml(r.beanName || "원두")} / ${escapeRecipeHtml(r.dripperLabel || r.dripper || "")} · 강도 산미 ${escapeRecipeHtml(f.sour ?? "—")}, 단맛 ${escapeRecipeHtml(f.sweet ?? "—")}, 쓴맛 ${escapeRecipeHtml(f.bitter ?? "—")}${satisfaction}${escapeRecipeHtml(intent)} · 총 ${visible.length}건`;
 }
 function currentBrewSnapshot() {
   const dose = Number(document.getElementById("dose-num")?.value) || 30;
@@ -1256,6 +1389,7 @@ function currentBrewSnapshot() {
   const origin = document.getElementById("origin-select")?.value || "";
   const bean = (window.ORIGIN_DB || {})[origin];
   const estimated = getEstimatedBrewMetrics(dose, water, time);
+  const estimatedFlavorProfile = getEstimatedFlavorProfile(dose, water, time);
   const tds = document.getElementById("measured-tds")?.value;
   const beverageMass = document.getElementById("measured-bev")?.value;
   const measured = window.calculateMeasuredBrewMetrics ? window.calculateMeasuredBrewMetrics(dose, tds, beverageMass) : { isMeasured: false };
@@ -1267,21 +1401,26 @@ function currentBrewSnapshot() {
     grinderId: getSelectedGrinderMode() === "registered" ? (document.getElementById("grinder-select")?.value || "") : "",
     grinderSetting: getSelectedGrinderMode() === "registered" ? (Number(document.getElementById("grinder-dial-num")?.value) || null) : null,
     generalGrindLevel: getSelectedGrinderMode() === "general" ? getSelectedGeneralGrindLevel() : null,
-    estimatedEY: estimated.ey, estimatedTDS: estimated.tds,
+    estimatedEY: estimated.ey, estimatedTDS: estimated.tds, estimatedFlavorProfile,
     measuredTDS: tds !== "" && tds != null ? Number(tds) : null,
     measuredBeverageMass: beverageMass !== "" && beverageMass != null ? Number(beverageMass) : null,
     measuredEY: measured.isMeasured ? measured.calculatedEY_percent : null
   };
 }
 function beginNewBrewSession() {
+  if (tastingAutoSaveTimer) { clearTimeout(tastingAutoSaveTimer); tastingAutoSaveTimer = null; }
   currentBrewSessionId = `brew_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
   latestTastingRecord = null;
   tastingSkipped = false;
+  currentOverallRating = null;
   ["sour","sweet","bitter"].forEach(key => { const el=document.getElementById(`flavor-${key}`); if(el) { el.value="2.5"; el.dataset.rated="false"; } });
   ["measured-tds","measured-bev"].forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+  const intent=document.getElementById("tasting-rebrew-intent"); if(intent) intent.value="";
+  const note=document.getElementById("tasting-personal-note"); if(note) note.value="";
   const panel=document.getElementById("postbrew-evaluation-panel"); if(panel) panel.hidden=true;
   const btn=document.getElementById("btn-save-tasting"); if(btn) btn.disabled=false;
   const status=document.getElementById("tasting-save-status"); if(status) status.textContent="";
+  renderOverallRatingStars();
   updateFlavorChart();
   updateDial();
 }
@@ -1289,39 +1428,66 @@ function showPostBrewEvaluation() {
   const panel=document.getElementById("postbrew-evaluation-panel");
   if (panel) { panel.hidden=false; panel.scrollIntoView({behavior:"smooth",block:"nearest"}); }
   const status=document.getElementById("tasting-save-status");
-  if (status) status.textContent="추출이 끝났습니다. 실제로 시음한 뒤 관능평가를 입력해 주세요.";
+  if (status && !latestTastingRecord) status.textContent="추출이 끝났습니다. 예상 향미와 비교하면서 실제 맛의 강도와 전체 만족도를 입력해 주세요. 입력 내용은 자동 저장됩니다.";
+  updateFlavorChart();
 }
-function saveTastingEvaluation() {
+function hasTastingInput(ratings, overall, intent, note, tds, beverageMass) {
+  return Object.values(ratings).some(v => v !== null) || overall !== null || !!intent || !!(note && note.trim()) || !!tds || !!beverageMass;
+}
+function persistTastingEvaluation(finalize = false) {
   if (!currentBrewSessionId) currentBrewSessionId = `brew_${Date.now()}`;
   const ratings = getFlavorRatings();
-  const hasRating = Object.values(ratings).some(v => v !== null);
+  const overall = currentOverallRating;
+  const intent = document.getElementById("tasting-rebrew-intent")?.value || "";
+  const note = document.getElementById("tasting-personal-note")?.value || "";
   const tds = document.getElementById("measured-tds")?.value || "";
   const beverageMass = document.getElementById("measured-bev")?.value || "";
-  if (!hasRating && !tds && !beverageMass) { alert("산미·단맛·쓴맛 중 하나 이상 평가하거나 실제 측정값을 입력해 주세요."); return; }
+  if (!hasTastingInput(ratings, overall, intent, note, tds, beverageMass)) {
+    if (finalize) alert("맛의 강도, 전체 만족도, 재추출 의향, 메모 또는 실제 측정값 중 하나 이상 입력해 주세요.");
+    return false;
+  }
   const snapshot = currentBrewSnapshot();
+  const previous = getTastingLogs().find(item => item.sessionId === currentBrewSessionId);
   const record = {
     id: currentBrewSessionId, sessionId: currentBrewSessionId,
-    date: new Date().toLocaleString("ko-KR"), author: currentUserName,
-    roleCode: isMaster ? "MASTER" : "GUEST", ...snapshot,
-    flavorRatings: ratings,
-    note: "추출 완료 후 사용자가 입력한 관능평가 자동 저장"
+    date: previous?.date || new Date().toLocaleString("ko-KR"), updatedAt: new Date().toISOString(),
+    author: currentUserName, roleCode: isMaster ? "MASTER" : "GUEST", ...snapshot,
+    flavorRatings: ratings, overallRating: overall, rebrewIntent: intent, personalNote: note,
+    recordStatus: (finalize || previous?.recordStatus === "completed") ? "completed" : "draft",
+    note: note || ""
   };
   const records = getTastingLogs().filter(item => item.sessionId !== currentBrewSessionId);
   records.unshift(record);
-  if (!setTastingLogs(records)) return;
+  if (!setTastingLogs(records)) return false;
   latestTastingRecord = record;
   renderTastingHistorySummary();
   updateFlavorChart();
   const status=document.getElementById("tasting-save-status");
-  if (status) status.textContent = "✓ 추출·관능평가 기록을 브라우저에 자동 저장했습니다. 설정값은 별도 저장 버튼으로 저장할 수 있습니다.";
-  const btn=document.getElementById("btn-save-tasting"); if(btn) btn.disabled=true;
+  if (status) status.textContent = finalize
+    ? "✓ 관능평가를 완료하고 추출 기록에 자동 저장했습니다. 레시피 설정은 별도 저장 버튼으로 보관할 수 있습니다."
+    : "✓ 입력한 평가가 기기에 자동 저장되었습니다.";
   const summary=document.getElementById("flavor-latest-summary");
-  if(summary) summary.textContent = `최근 평가: 산미 ${ratings.sour ?? "미평가"} · 단맛 ${ratings.sweet ?? "미평가"} · 쓴맛 ${ratings.bitter ?? "미평가"}`;
+  if (summary) summary.textContent = `실제 강도: 산미 ${ratings.sour ?? "미평가"} · 단맛 ${ratings.sweet ?? "미평가"} · 쓴맛 ${ratings.bitter ?? "미평가"} · 전체 만족도 ${overall === null ? "미평가" : `${overall.toFixed(1)}/5`}`;
+  return true;
+}
+function scheduleTastingAutoSave() {
+  if (tastingAutoSaveTimer) clearTimeout(tastingAutoSaveTimer);
+  tastingAutoSaveTimer = window.setTimeout(() => {
+    tastingAutoSaveTimer = null;
+    persistTastingEvaluation(false);
+  }, 450);
+}
+function saveTastingEvaluation() {
+  if (tastingAutoSaveTimer) { clearTimeout(tastingAutoSaveTimer); tastingAutoSaveTimer = null; }
+  persistTastingEvaluation(true);
 }
 function skipTastingEvaluation() {
+  if (tastingAutoSaveTimer) { clearTimeout(tastingAutoSaveTimer); tastingAutoSaveTimer = null; }
+  persistTastingEvaluation(false);
   tastingSkipped = true;
   const panel=document.getElementById("postbrew-evaluation-panel"); if(panel) panel.hidden=true;
-  const status=document.getElementById("tasting-save-status"); if(status) status.textContent="관능평가를 나중에 하기로 했습니다. 추출 평가 기록은 아직 저장되지 않았습니다.";
+  const status=document.getElementById("tasting-save-status");
+  if (status) status.textContent = latestTastingRecord ? "현재까지 입력한 평가는 자동 저장되어 있습니다. 추출 기록에서 확인할 수 있습니다." : "관능평가를 건너뛰었습니다. 평가 입력이 없어 저장된 관능평가 기록은 없습니다.";
 }
 
 const STORAGE_KEY = "ohBaristaCumulativeRecipesDB_v3";
@@ -1382,6 +1548,9 @@ function saveCurrentRecipe() {
     alert("드리퍼, 원두, 레시피를 먼저 선택해 주세요.");
     return;
   }
+  // 레시피 저장 버튼을 누르는 순간 대기 중인 자동 저장을 먼저 완료해 평가의 최신값을 연결합니다.
+  if (tastingAutoSaveTimer) { clearTimeout(tastingAutoSaveTimer); tastingAutoSaveTimer = null; }
+  persistTastingEvaluation(false);
   const defaultName = getRecommendedRecipeName();
   const nameInput = prompt("저장할 레시피 이름을 확인해 주세요 (기본 추천 이름 자동 입력):", defaultName);
   if (!nameInput) return;
@@ -1415,6 +1584,9 @@ function saveCurrentRecipe() {
     recipeType: recipeType || "general",
     baristaPresetId: currentBaristaPresetId || "",
     flavorRatings: latestTastingRecord?.sessionId === currentBrewSessionId ? latestTastingRecord.flavorRatings : { sour:null, sweet:null, bitter:null },
+    overallRating: latestTastingRecord?.sessionId === currentBrewSessionId ? latestTastingRecord.overallRating : currentOverallRating,
+    rebrewIntent: latestTastingRecord?.sessionId === currentBrewSessionId ? latestTastingRecord.rebrewIntent : (document.getElementById("tasting-rebrew-intent")?.value || ""),
+    personalNote: latestTastingRecord?.sessionId === currentBrewSessionId ? latestTastingRecord.personalNote : (document.getElementById("tasting-personal-note")?.value || ""),
     tastingRecordId: latestTastingRecord?.sessionId === currentBrewSessionId ? latestTastingRecord.id : "",
     dose: dose,
     grinderMode: grinderMode,
@@ -1450,7 +1622,7 @@ function downloadExcelFile(mode) {
     return;
   }
 
-  const headers = ["고유ID", "저장일시", "구분코드", "작성자", "레시피이름", "드리퍼", "산지키", "원두량(g)", "분쇄설정방식", "그라인더ID", "그라인더눈금", "일반분쇄도단계", "실측TDS(%)", "실측음료무게(g)", "물온도(℃)", "추출시간(초)", "물의양(g)", "수율정보", "맛한줄평", "측정상태", "레시피유형", "바리스타프리셋ID", "드리퍼표시명", "향미산미", "향미단맛", "향미쓴맛", "시음기록ID"];
+  const headers = ["고유ID", "저장일시", "구분코드", "작성자", "레시피이름", "드리퍼", "산지키", "원두량(g)", "분쇄설정방식", "그라인더ID", "그라인더눈금", "일반분쇄도단계", "실측TDS(%)", "실측음료무게(g)", "물온도(℃)", "추출시간(초)", "물의양(g)", "수율정보", "맛한줄평", "측정상태", "레시피유형", "바리스타프리셋ID", "드리퍼표시명", "향미산미", "향미단맛", "향미쓴맛", "시음기록ID", "전체만족도(0.5단위)", "재추출의향", "개인메모"];
   const escapeCsv = val => `"${String(val ?? "").replace(/"/g, '""')}"`;
 
   const rows = targetList.map(r => [
@@ -1458,7 +1630,8 @@ function downloadExcelFile(mode) {
     r.dose, r.grinderMode || "none", r.grinderId || "", r.grinderSetting ?? "", r.generalGrindLevel ?? "",
     r.measuredTds ?? "", r.measuredBeverageMass ?? "", r.temp, r.time, r.water, r.ey, r.review,
     r.measurementStatus || "legacy_unverified", r.recipeType || "general", r.baristaPresetId || "", r.dripperLabel || "",
-    r.flavorRatings?.sour ?? "", r.flavorRatings?.sweet ?? "", r.flavorRatings?.bitter ?? "", r.tastingRecordId || ""
+    r.flavorRatings?.sour ?? "", r.flavorRatings?.sweet ?? "", r.flavorRatings?.bitter ?? "", r.tastingRecordId || "",
+    r.overallRating ?? "", r.rebrewIntent || "", r.personalNote || ""
   ].map(escapeCsv).join(","));
 
   const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
@@ -1546,7 +1719,10 @@ function handleExcelFileUpload(event) {
       const importedPresetId = hasV16Headers ? (col(cols, "바리스타프리셋ID", -1) || "") : "";
       const importedPreset = (window.BARISTA_PRESETS || []).find(p => p.id === importedPresetId);
       const rawDripper = col(cols, "드리퍼", 5) || "bluebottle";
-      const importedDripper = (window.DRIPPERS || {})[rawDripper] || (importedPreset && importedPreset.dripper === rawDripper ? rawDripper : "bluebottle");
+      // 저장·CSV에는 드리퍼 객체가 아니라 안정적인 ID 문자열을 보관합니다.
+      const importedDripper = (window.DRIPPERS || {})[rawDripper]
+        ? rawDripper
+        : (importedPreset && importedPreset.dripper === rawDripper ? rawDripper : "bluebottle");
       const importedTdsNum = Number(importedTds);
       const importedMassNum = Number(importedBeverageMass);
       const item = {
@@ -1560,6 +1736,9 @@ function handleExcelFileUpload(event) {
         recipeType: hasV16Headers ? (col(cols, "레시피유형", -1) || (importedPresetId ? "barista" : "general")) : "general",
         baristaPresetId: importedPresetId,
         tastingRecordId: hasV16Headers ? (col(cols, "시음기록ID", -1) || "") : "",
+        overallRating: (() => { const raw = headers.includes("전체만족도(0.5단위)") ? col(cols, "전체만족도(0.5단위)", -1) : ""; const n = Number(raw); return raw !== "" && Number.isFinite(n) ? Math.max(0.5, Math.min(5, Math.round(n * 2) / 2)) : null; })(),
+        rebrewIntent: headers.includes("재추출의향") ? (col(cols, "재추출의향", -1) || "") : "",
+        personalNote: headers.includes("개인메모") ? (col(cols, "개인메모", -1) || "") : "",
         flavorRatings: hasV16Headers ? {
           sour: (() => { const v = col(cols, "향미산미", -1); return v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null; })(),
           sweet: (() => { const v = col(cols, "향미단맛", -1); return v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null; })(),
@@ -1639,7 +1818,9 @@ function renderRecipeBoard() {
         • <b>추출:</b> ${formatSecToKorean(r.time)} · ${getRecipeMetricsSummary(r)}<br/>
         • <b>드리퍼:</b> ${escapeRecipeHtml(r.dripperLabel || r.dripper || "")}<br/>
         • <b>분쇄:</b> ${escapeRecipeHtml(getRecipeGrindSummary(r))}<br/>
-        • <b>메모:</b> <span style="color:#d9480f; font-weight:700;">"${escapeRecipeHtml(r.review)}"</span>
+        • <b>전체 만족도:</b> ${renderStarRatingText(r.overallRating)}<br/>
+        • <b>재추출 의향:</b> ${escapeRecipeHtml(({repeat:"다시 추출",adjust:"수정 후 추출",no:"재추출하지 않음"})[r.rebrewIntent] || "미기록")}<br/>
+        • <b>메모:</b> <span style="color:#d9480f; font-weight:700;">"${escapeRecipeHtml(r.personalNote || r.review)}"</span>
       </div>
       <button class="excel-btn load1" style="width:100%; margin-top:6px; padding:4px;" onclick="loadRecipeToDial(${r.id})">🔄 이 세팅으로 불러오기</button>
     </div>
@@ -1712,6 +1893,10 @@ function loadRecipeToDial(id) {
     const bo=document.getElementById("barista-recipe-options");if(bo)bo.hidden=true;
   }
   ["sour","sweet","bitter"].forEach(key => { const el=document.getElementById(`flavor-${key}`); if(el){ const v=r.flavorRatings?.[key]; el.value=v ?? 2.5; el.dataset.rated=(v !== null && v !== undefined && v !== "") ? "true" : "false"; } });
+  currentOverallRating = r.overallRating !== null && r.overallRating !== undefined && r.overallRating !== "" && Number.isFinite(Number(r.overallRating)) ? Number(r.overallRating) : null;
+  const rebrewEl=document.getElementById("tasting-rebrew-intent"); if(rebrewEl) rebrewEl.value=r.rebrewIntent || "";
+  const noteEl=document.getElementById("tasting-personal-note"); if(noteEl) noteEl.value=r.personalNote || r.review || "";
+  renderOverallRatingStars();
   refreshWizard();
   updateFlavorChart();
   const tdsInput = document.getElementById("measured-tds");
@@ -1756,7 +1941,7 @@ function showInlineHelp(topic) {
     time: ["목표 추출 시간", "레시피의 목표 종료 시간입니다. 분쇄도·원두·물줄기·교반과 드리퍼 상태에 따라 실제 배수 시간은 달라집니다."],
     grind: ["분쇄 설정", "등록 모델은 해당 그라인더 고유 눈금만 표시합니다. 일반 5단계는 모델을 모를 때 사용하는 정성적 분류이며 마이크론이나 다른 그라인더 눈금으로 환산하지 않습니다."],
     metrics: ["예상·실측 수율(EY)과 농도(TDS)", "예상값은 수온·시간·물:원두 비율·일반 분쇄 단계와 단순 가정을 반영한 화면용 휴리스틱입니다. 실험으로 보정되거나 검증된 예측 모델이 아니며 표시한 오차 범위도 통계적 신뢰구간이 아닙니다. 실제 결과와 다를 수 있습니다. 실측 EY는 굴절계 TDS와 실제 완성 음료 무게가 모두 있어야 계산됩니다."],
-    flavor: ["향미 평가", "산미·단맛·쓴맛은 사용자가 실제로 시음한 뒤 0~5점으로 기록합니다. 설정값만으로 향미 점수를 예측하지 않습니다."],
+    flavor: ["관능평가", "산미·단맛·쓴맛은 실제로 느낀 강도를 0~5 범위로 기록합니다. 전체 커피 만족도는 별도로 0.5점 단위, 최대 5점으로 평가하며 재추출 의향과 개인 메모도 저장할 수 있습니다."],
     extraction: ["시간별 성분 용출 개념도", "시간축에 따른 성분 용출 경향을 설명하는 개념 곡선입니다. 특정 원두의 실측 화학 분석 데이터가 아니며 목표 시간선은 현재 레시피의 목표 시간입니다."],
     sca: ["SCA 골든컵 차트", "참고 목표 영역은 TDS 1.15~1.35%, EY 18~22%로 표시합니다. 개인 취향이나 모든 추출 방식에 대한 절대적 품질 판정은 아닙니다."],
     profile: ["추출 프로파일 통계", "현재 설정한 원두량·총 물 투입량·비율·수온·목표 시간·푸어 단계 수를 요약합니다. 실측 추출 성능 통계와는 구분합니다."],
@@ -1785,6 +1970,23 @@ function setFlavorRatingTouched(key) {
   const el=document.getElementById(`flavor-${key}`);
   if (el) el.dataset.rated="true";
   updateFlavorChart();
+  scheduleTastingAutoSave();
+}
+function renderOverallRatingStars() {
+  const container=document.getElementById("overall-rating-stars");
+  if (!container) return;
+  const value=Number(currentOverallRating) || 0;
+  container.innerHTML = Array.from({length:5},(_,idx)=>{
+    const star=idx+1, halfValue=star-.5, fullValue=star;
+    return `<span class="rating-star-wrap"><span class="rating-star-base">★</span><button type="button" class="rating-star-half left ${value>=halfValue?"active":""}" onclick="setOverallRating(${halfValue})" aria-label="전체 만족도 ${halfValue}점">★</button><button type="button" class="rating-star-half right ${value>=fullValue?"active":""}" onclick="setOverallRating(${fullValue})" aria-label="전체 만족도 ${fullValue}점">★</button></span>`;
+  }).join("") + `<span class="rating-star-caption">${currentOverallRating === null ? "미평가" : `${Number(currentOverallRating).toFixed(1)} / 5.0`}</span>`;
+}
+function setOverallRating(value, shouldAutoSave = true) {
+  const n=Number(value);
+  if (!Number.isFinite(n) || n < 0.5 || n > 5 || Math.round(n*2)!==n*2) return;
+  currentOverallRating=n;
+  renderOverallRatingStars();
+  if (shouldAutoSave) scheduleTastingAutoSave();
 }
 function updateFlavorChart() {
   const values = ["sour","sweet","bitter"].map(key => {
@@ -1792,23 +1994,36 @@ function updateFlavorChart() {
     const rated=!!el && el.dataset.rated === "true";
     const output=document.getElementById(`flavor-${key}-value`);
     if(output) output.textContent=rated?`${value.toFixed(1)} / 5`:"미평가";
-    return value;
+    return { value, rated };
   });
   const canvas=document.getElementById("flavorChart"); if(!canvas)return;
   const ctx=canvas.getContext("2d"), W=canvas.width, H=canvas.height;
   ctx.clearRect(0,0,W,H);
-  const labels=["산미","단맛","쓴맛"], colors=["#d69a49","#659a73","#7588a8"];
-  const max=5, left=54, right=20, top=16, row=43, usable=W-left-right;
-  ctx.font="12px sans-serif"; ctx.textBaseline="middle";
-  values.forEach((v,i)=>{
-    const key=["sour","sweet","bitter"][i];
-    const isRated=document.getElementById(`flavor-${key}`)?.dataset.rated === "true";
-    const y=top+i*row;
-    ctx.fillStyle="#596b5d"; ctx.textAlign="right"; ctx.fillText(labels[i],left-10,y+9);
-    ctx.fillStyle="#edf2ed"; ctx.fillRect(left,y,usable,18);
-    if(isRated){ctx.fillStyle=colors[i];ctx.fillRect(left,y,usable*v/max,18);}
-    ctx.fillStyle="#647468";ctx.textAlign="left";ctx.fillText(isRated?`${v.toFixed(1)}/5`:"미평가",left+usable+5,y+9);
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,W,H);
+  const keys=["sour","sweet","bitter"], labels=["산미","단맛","쓴맛"], colors=["#d69a49","#659a73","#7588a8"];
+  const dose=Number(document.getElementById("dose-num")?.value)||30;
+  const water=Number(document.getElementById("water-num")?.value)||480;
+  const time=Number(document.getElementById("time-num")?.value)||210;
+  const predicted=getEstimatedFlavorProfile(dose,water,time);
+  const predictedValues=[predicted.sour,predicted.sweet,predicted.bitter];
+  const left=55,right=92,barW=W-left-right,rowTop=30,rowH=60,barH=13;
+  ctx.font="bold 13px sans-serif"; ctx.textBaseline="middle";
+  labels.forEach((label,i)=>{
+    const y=rowTop+i*rowH;
+    ctx.fillStyle="#405547"; ctx.textAlign="right"; ctx.fillText(label,left-9,y+14);
+    // 예상값
+    ctx.fillStyle="#eaf0eb"; ctx.beginPath(); ctx.roundRect(left,y,barW,barH,6); ctx.fill();
+    ctx.fillStyle=colors[i]; ctx.globalAlpha=.55; ctx.beginPath(); ctx.roundRect(left,y,barW*Math.max(0,Math.min(5,predictedValues[i]))/5,barH,6); ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle="#718076"; ctx.textAlign="left"; ctx.font="10px sans-serif"; ctx.fillText(`예상 ${predictedValues[i].toFixed(1)}`,left+barW+5,y+7);
+    // 실제 평가
+    const actualY=y+22;
+    ctx.fillStyle="#edf2ed"; ctx.beginPath(); ctx.roundRect(left,actualY,barW,barH,6); ctx.fill();
+    if(values[i].rated){ctx.fillStyle=colors[i];ctx.beginPath();ctx.roundRect(left,actualY,barW*Math.max(0,Math.min(5,values[i].value))/5,barH,6);ctx.fill();}
+    ctx.fillStyle="#526456"; ctx.textAlign="left"; ctx.font="10px sans-serif"; ctx.fillText(values[i].rated?`실제 ${values[i].value.toFixed(1)}`:"실제 미평가",left+barW+5,actualY+7);
+    ctx.font="bold 13px sans-serif";
   });
+  ctx.fillStyle="#66766a"; ctx.font="10px sans-serif"; ctx.textAlign="left";
+  ctx.fillText("예상값은 참고용 추정치이며 실제 맛과 다를 수 있습니다.",left,H-7);
 }
 
 // ============================================================================
@@ -1823,6 +2038,7 @@ let soundEnabled = true;
 let brewRunning = false;
 let brewElapsed = -10.0;
 let brewLastTick = 0;
+
 let brewAnimReq = null;
 let pourStages = [];
 let lastBeepSec = null;
@@ -2185,6 +2401,9 @@ function openBrewModal() {
 }
 
 function closeBrewModal() {
+  // 모달을 닫는 순간 입력 디바운스가 남아 있으면 먼저 플러시하여 평가 누락을 방지합니다.
+  if (tastingAutoSaveTimer) { clearTimeout(tastingAutoSaveTimer); tastingAutoSaveTimer = null; }
+  persistTastingEvaluation(false);
   if (brewElapsed >= (parseFloat(document.getElementById("time-num")?.value) || 210) && !latestTastingRecord && !tastingSkipped) {
     const proceed = window.confirm("관능평가를 아직 저장하지 않았습니다. 추출 평가 없이 닫을까요?");
     if (!proceed) return;
@@ -2192,6 +2411,8 @@ function closeBrewModal() {
   brewRunning = false;
   setPouringWaterSound(false);
   if (brewAnimReq) cancelAnimationFrame(brewAnimReq);
+  if (brewOutroAnimReq) cancelAnimationFrame(brewOutroAnimReq);
+  brewOutroAnimReq = null;
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   const modal = document.getElementById("brewModal");
   if (modal) modal.classList.remove("open");
@@ -2212,6 +2433,8 @@ function resetBrewTimer() {
   lastBeepSec = null;
   setPouringWaterSound(false);
   if (brewAnimReq) cancelAnimationFrame(brewAnimReq);
+  if (brewOutroAnimReq) cancelAnimationFrame(brewOutroAnimReq);
+  brewOutroAnimReq = null;
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
   pourStages.forEach(s => { s.spokenStart = false; s.spokenMid = false; });
@@ -2272,7 +2495,7 @@ function brewLoop(now) {
     syncStartButtonsText("↺ 다시 추출");
     if (!brewCompletionPromptShown) {
       brewCompletionPromptShown = true;
-      window.setTimeout(() => showPostBrewEvaluation(), 350);
+      startBrewOutro(targetRefWater, totalTime);
     }
   }
 
@@ -2383,7 +2606,29 @@ function brewLoop(now) {
 // ----------------------------------------------------------------------------
 // 3D 투명 드리퍼·커피층 애니메이션 캔버스
 // ----------------------------------------------------------------------------
-function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, hudSub) {
+function startBrewOutro(finalWater, totalTime) {
+  if (brewOutroAnimReq) cancelAnimationFrame(brewOutroAnimReq);
+  const startedAt = performance.now();
+  const duration = 6.8;
+  const clamp = value => Math.max(0, Math.min(1, value));
+  const frame = now => {
+    const elapsed = Math.max(0, (now-startedAt)/1000);
+    const kettleAlpha = 1 - clamp(elapsed/1.5);
+    // 주전자 주둥이가 사라진 뒤 3초를 기다리고 드리퍼를 서서히 제거합니다.
+    const dripperAlpha = elapsed < 4.5 ? 1 : 1 - clamp((elapsed-4.5)/1.5);
+    const steamProgress = clamp((elapsed-5.2)/1.3);
+    draw3DScene(totalTime, "outro", finalWater, 1, "🎉 추출 완료!", "따뜻한 커피 향을 즐겨보세요.", { kettleAlpha, dripperAlpha, steamProgress, elapsed });
+    if (elapsed < duration && document.getElementById("brewModal")?.classList.contains("open")) {
+      brewOutroAnimReq = requestAnimationFrame(frame);
+    } else {
+      brewOutroAnimReq = null;
+      showPostBrewEvaluation();
+    }
+  };
+  brewOutroAnimReq = requestAnimationFrame(frame);
+}
+
+function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, hudSub, outroState = null) {
   const canvas = document.getElementById("brewAnimCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -2400,6 +2645,9 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
   const accent = dripperData.themeColor || "#78947b";
   const pouring = phaseMode === "pouring";
   const waiting = phaseMode === "waiting";
+  const isOutro = phaseMode === "outro";
+  const kettleAlpha = isOutro ? Math.max(0,Math.min(1,Number(outroState?.kettleAlpha)||0)) : 1;
+  const dripperAlpha = isOutro ? Math.max(0,Math.min(1,Number(outroState?.dripperAlpha)||0)) : 1;
 
   // 단계 번호: 0=Bloom, 1=1차, 2=2차, 3=3차/마무리
   let activeStageIndex = 0;
@@ -2420,7 +2668,7 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
   } else if (waiting) {
     swell = stageAmplitudes[stageNo] * (1 - 0.78 * progress) * Math.pow(dose / 30, 0.22);
     crater = previousCrater + (craterTargets[stageNo] - previousCrater) * progress;
-  } else if (phaseMode === "done") {
+  } else if (phaseMode === "done" || phaseMode === "outro") {
     swell = 0;
     crater = craterTargets[3];
   }
@@ -2471,18 +2719,14 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
   ctx.beginPath(); ctx.ellipse(cx, srvTopY, srvTopW, 6, 0, Math.PI, Math.PI * 2); ctx.stroke();
   ctx.restore();
 
-  // Gooseneck spout: keep the stream aligned to the coffee-bed center.
+  // 물줄기 도착점을 현재 원두량과 팽창/함몰이 반영된 커피층 중앙 표면에 일치시킵니다.
+  const normalizedDoseForStream = Math.max(0, Math.min(1, (dose - 15) / 35));
+  const bedBaseYForStream = 252 - 34 - normalizedDoseForStream * 30;
+  const streamTargetY = bedBaseYForStream - swell + crater;
   ctx.save();
+  ctx.globalAlpha *= kettleAlpha;
   ctx.strokeStyle = "#adb9c5"; ctx.lineWidth = 8; ctx.lineCap = "round";
   ctx.beginPath(); ctx.moveTo(W - 10, 78); ctx.quadraticCurveTo(cx + 55, 94, cx + 5, 86); ctx.stroke();
-  if (pouring) {
-    const streamX = cx + Math.sin(elapsed * 5) * 1.2;
-    const streamGrad = ctx.createLinearGradient(streamX, 90, cx, 205);
-    streamGrad.addColorStop(0, "rgba(191,235,255,.98)"); streamGrad.addColorStop(1, "rgba(75,176,220,.8)");
-    ctx.strokeStyle = streamGrad; ctx.lineWidth = 4.2;
-    ctx.beginPath(); ctx.moveTo(streamX, 90); ctx.quadraticCurveTo(cx + 1, 137, cx, 194); ctx.stroke();
-    ctx.fillStyle = "rgba(194,239,255,.55)"; ctx.beginPath(); ctx.ellipse(cx, 195, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
-  }
   ctx.restore();
 
   // Dripper geometry (transparent glass). Different inner profiles per dripper.
@@ -2511,6 +2755,9 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
     if (visualDripper === "bluebottle") return topHalf - (topHalf - bottomHalf) * Math.pow(t, 0.88);
     return topHalf - (topHalf - bottomHalf) * t;
   };
+
+  ctx.save();
+  ctx.globalAlpha *= dripperAlpha;
 
   // Main coffee bed height is tied to coffee dose. A larger dose creates a taller bed.
   const normalizedDose = Math.max(0, Math.min(1, (dose - 15) / 35));
@@ -2606,13 +2853,47 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
   ctx.restore();
 
   // Extracted coffee drops from the dripper into the server.
-  if (elapsed > 1 && phaseMode !== "prep") {
+  if (elapsed > 1 && phaseMode !== "prep" && phaseMode !== "done" && !isOutro) {
     ctx.save();
     ctx.strokeStyle = "rgba(190,126,80,.88)"; ctx.lineWidth = waiting || phaseMode === "done" ? 1.8 : 2.6;
     ctx.setLineDash(waiting || phaseMode === "done" ? [3, 7] : [7, 4]);
     ctx.lineDashOffset = -elapsed * 28;
     const outlets = visualDripper === "kalita" ? [cx - 12, cx, cx + 12] : [cx];
     outlets.forEach(x => { ctx.beginPath(); ctx.moveTo(x, bottomY + 2); ctx.lineTo(x, liquidTopY - 1); ctx.stroke(); });
+    ctx.restore();
+  }
+  ctx.restore(); // dripper fade scope
+
+  // 물줄기는 드리퍼/커피층 앞쪽에 렌더링하여 커피층의 중앙 표면에 닿는 것이 보이게 합니다.
+  if (pouring) {
+    const streamX = cx + Math.sin(elapsed * 5) * 1.2;
+    const streamGrad = ctx.createLinearGradient(streamX, 90, cx, streamTargetY);
+    streamGrad.addColorStop(0, "rgba(191,235,255,.98)"); streamGrad.addColorStop(1, "rgba(75,176,220,.92)");
+    ctx.save();
+    ctx.globalAlpha *= kettleAlpha;
+    ctx.strokeStyle = streamGrad; ctx.lineWidth = 4.2; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(streamX, 90); ctx.quadraticCurveTo(cx + 1, (90+streamTargetY)/2, cx, streamTargetY); ctx.stroke();
+    ctx.fillStyle = "rgba(194,239,255,.68)"; ctx.beginPath(); ctx.ellipse(cx, streamTargetY, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Steam rises from the coffee server after the dripper begins to disappear.
+  if (isOutro && Number(outroState?.steamProgress) > 0) {
+    const steam = Math.max(0,Math.min(1,Number(outroState.steamProgress)));
+    const phaseTime = Number(outroState.elapsed) || 0;
+    ctx.save();
+    for (let i=0;i<4;i++) {
+      const baseX = cx + (i-1.5)*13;
+      const rise = steam*48;
+      const drift = Math.sin(phaseTime*2.2+i*1.7)*7;
+      ctx.strokeStyle = `rgba(232,244,238,${0.28+steam*0.38})`;
+      ctx.lineWidth = 3.2 - i*.35;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(baseX, 285);
+      ctx.bezierCurveTo(baseX-10+drift, 270-rise*.25, baseX+12-drift, 260-rise*.65, baseX+drift, 245-rise);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
