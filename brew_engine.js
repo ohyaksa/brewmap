@@ -1,10 +1,10 @@
 /**
  * brew_engine.js
- * 드립 커피 추출 프로그램 작동 엔진 파일 (버전 1.6 수정본)
+ * 드립 커피 추출 프로그램 작동 엔진 파일 (버전 1.65 수정본)
  * - 사용자 인증(마스터 / 지인 모드) 및 권한 관리 안전성 강화
  * - 1줄 2개 배치 조작창 (막대 슬라이더 + 직접 숫자 입력 + 🔒 잠금 시스템)
  * - 7단계 중량 × 4개 추출 모드 실시간 물 투입량 계산
- * - 세 가지 분쇄 설정 방식(등록 모델 / 일반 5단계 / 설정 안 함)
+ * - 두 가지 분쇄 설정 방식(등록 모델 / 일반 5단계)
  * - 실측 TDS/EY 및 SCA 골든컵 차트(미측정 추정값 미표시)
  * - 3D 실사 추출 애니메이션, 물소리 ASMR 효과음, 3단계 음성 안내
  * - 앱 내부 저장 + 단일 기본 엑셀(.csv) 자동 강제 저장 및 백업·복원 시스템
@@ -18,6 +18,15 @@ let currentUserName = "오찬욱";
 let currentDripper = "bluebottle";
 let currentWeightIdx = 3; // 기본 30g
 let currentModeKey = "standard";
+let currentDripperLabel = "Blue Bottle Dripper (블루보틀 드리퍼)";
+let currentBaristaPresetId = null;
+let currentBaristaPreset = null;
+let prePresetDripper = null;
+let prePresetDripperLabel = null;
+let recipeType = null;
+let wizardState = { dripper: false, bean: false, recipe: false };
+let presetLockedFields = new Set();
+let brewCompletionPromptShown = false;
 let uploadMode = "default";
 
 // 세팅 고정(잠금) 상태 객체
@@ -55,6 +64,8 @@ window.addEventListener("DOMContentLoaded", () => {
       populateGrinderSelect();
     }
     onGrinderModeChange();
+    initMasterSession();
+    initWizard();
     if (typeof window.ORIGIN_DB !== "undefined") {
       populateOriginSelect();
       populatePresetSelect();
@@ -62,6 +73,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // 3) 초기 다이얼 연동
     applyOriginMatrix();
+    updateFlavorChart();
     renderRecipeBoard();
   } catch (err) {
     console.error("초기화 중 오류 발생:", err);
@@ -108,8 +120,9 @@ function loginMaster() {
   completeLogin(true, "오찬욱");
 }
 
-function completeLogin(masterFlag, nameStr) {
+function completeLogin(masterFlag, nameStr, persistMaster = true) {
   isMaster = masterFlag;
+  if (masterFlag && persistMaster) saveMasterSession();
   currentUserName = isMaster ? "오찬욱" : nameStr;
 
   const authOverlay = document.getElementById("authOverlay");
@@ -183,16 +196,20 @@ function populateGrinderSelect() {
   const selectEl = document.getElementById("grinder-select");
   if (!selectEl) return;
   selectEl.innerHTML = "";
-
-  const grinders = window.COFFEE_GRINDERS || [];
+  const grinders = [...(window.COFFEE_GRINDERS || [])].sort((a, b) => {
+    const order = { pharmacy: 0, home: 1 };
+    const pa = Object.prototype.hasOwnProperty.call(order, a.profile) ? order[a.profile] : 2;
+    const pb = Object.prototype.hasOwnProperty.call(order, b.profile) ? order[b.profile] : 2;
+    return pa - pb || a.name.localeCompare(b.name, "ko");
+  });
   grinders.forEach(g => {
     const opt = document.createElement("option");
     opt.value = g.id;
-    opt.textContent = g.name;
+    const prefix = g.profile === "pharmacy" ? "① 약국 · " : (g.profile === "home" ? "② 가정 · " : "③ 기타 · ");
+    opt.textContent = prefix + g.name;
     if (g.id === "feima_600n") opt.selected = true;
     selectEl.appendChild(opt);
   });
-  // 초기 그라인더 정보 반영
   onGrinderChange();
 }
 
@@ -222,25 +239,26 @@ function applyStandardLockUI(field, locked) {
   const slider = document.getElementById(field);
   const minusBtn = document.getElementById("minus-" + field);
   const plusBtn = document.getElementById("plus-" + field);
-  if (box) box.classList.toggle("is-locked", locked);
+  const presetLocked = presetLockedFields.has(field);
+  const effectiveLocked = locked || presetLocked;
+  if (box) box.classList.toggle("is-locked", effectiveLocked);
   if (btn) {
-    btn.textContent = locked ? "🔒 잠김" : "🔓 고정";
-    btn.classList.toggle("locked", locked);
+    btn.textContent = presetLocked ? "🔒 바리스타 지정" : (effectiveLocked ? "🔒 잠김" : "🔓 고정");
+    btn.classList.toggle("locked", effectiveLocked);
+    btn.disabled = presetLocked;
   }
-  [input, slider, minusBtn, plusBtn].forEach(el => { if (el) el.disabled = locked; });
+  [input, slider, minusBtn, plusBtn].forEach(el => { if (el) el.disabled = effectiveLocked; });
 }
 
 function applyGrinderLockUI() {
   const box = document.getElementById("box-grinder");
   const btn = document.getElementById("lock-grinder");
-  const mode = getSelectedGrinderMode();
-  const locked = lockStates.grinder || isAllLocked;
-  if (box) box.classList.toggle("is-locked", locked && mode !== "none");
+  const locked = lockStates.grinder || isAllLocked || presetLockedFields.has("grinder");
+  if (box) box.classList.toggle("is-locked", locked);
   if (btn) {
-    btn.style.display = mode === "none" ? "none" : "inline-block";
-    btn.textContent = locked ? "🔒 잠김" : "🔓 고정";
+    btn.textContent = presetLockedFields.has("grinder") ? "🔒 바리스타 지정" : (locked ? "🔒 잠김" : "🔓 고정");
     btn.classList.toggle("locked", locked);
-    btn.disabled = mode === "none";
+    btn.disabled = presetLockedFields.has("grinder");
   }
   const controls = [
     ...document.querySelectorAll('input[name="grinder-mode"]'),
@@ -254,9 +272,8 @@ function applyGrinderLockUI() {
 }
 
 function toggleLock(field) {
-  if (isAllLocked) return;
+  if (isAllLocked || presetLockedFields.has(field)) return;
   if (field === "grinder") {
-    if (getSelectedGrinderMode() === "none") return;
     lockStates.grinder = !lockStates.grinder;
     applyGrinderLockUI();
     return;
@@ -267,12 +284,14 @@ function toggleLock(field) {
 
 function toggleLockAll() {
   isAllLocked = !isAllLocked;
-  const btnAll = document.getElementById("btn-lock-all");
-  if (btnAll) {
-    btnAll.textContent = isAllLocked ? "🔒 전체 세팅 잠김 해제" : "🔓 전체 세팅 고정하기";
-    btnAll.classList.toggle("locked", isAllLocked);
-  }
-
+  ["btn-lock-all", "btn-lock-all-bottom"].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.textContent = isAllLocked ? "🔒 전체 세팅 잠김 해제" : "🔓 전체 세팅 고정하기";
+      btn.classList.toggle("locked", isAllLocked);
+      btn.setAttribute("aria-pressed", String(isAllLocked));
+    }
+  });
   ["dose", "water", "temp", "time"].forEach(field => {
     lockStates[field] = isAllLocked;
     applyStandardLockUI(field, isAllLocked);
@@ -283,7 +302,7 @@ function toggleLockAll() {
 
 function getSelectedGrinderMode() {
   const selected = document.querySelector('input[name="grinder-mode"]:checked');
-  return selected ? selected.value : "general";
+  return selected ? selected.value : "registered";
 }
 
 function getSelectedGeneralGrindLevel() {
@@ -301,7 +320,6 @@ function updateGrinderSummary() {
   const value = document.getElementById("kpi-grinder-val");
   const sub = document.getElementById("kpi-grinder-sub");
   if (!value || !sub) return;
-
   if (mode === "registered") {
     const selectEl = document.getElementById("grinder-select");
     const input = document.getElementById("grinder-dial-num");
@@ -309,15 +327,11 @@ function updateGrinderSummary() {
     value.textContent = option ? option.textContent : "등록 그라인더";
     sub.textContent = `현재 눈금: ${input ? input.value : "미입력"} · 모델 고유 기준`;
     if (badge) badge.textContent = "모델별 설정";
-  } else if (mode === "general") {
+  } else {
     const level = getSelectedGeneralGrindLevel();
     value.textContent = `일반 분쇄도 ${level}단계`;
-    sub.textContent = getGeneralGrindLabel(level) + " · 정성적 분류";
+    sub.textContent = getGeneralGrindLabel(level) + " · 그라인더 모델을 모를 경우";
     if (badge) badge.textContent = "간편 설정";
-  } else {
-    value.textContent = "분쇄 설정 안 함";
-    sub.textContent = "분쇄 정보를 입력하지 않고 진행";
-    if (badge) badge.textContent = "미설정";
   }
 }
 
@@ -325,16 +339,14 @@ function onGrinderModeChange() {
   const mode = getSelectedGrinderMode();
   const registered = document.getElementById("grinder-registered-controls");
   const general = document.getElementById("general-grind-controls");
-  const none = document.getElementById("grinder-none-controls");
   if (registered) registered.hidden = mode !== "registered";
   if (general) general.hidden = mode !== "general";
-  if (none) none.hidden = mode !== "none";
   applyGrinderLockUI();
   updateGrinderSummary();
 }
 
 function stepControl(field, delta) {
-  if (lockStates[field] || isAllLocked) return;
+  if (lockStates[field] || isAllLocked || presetLockedFields.has(field)) return;
   const input = document.getElementById(field + "-num");
   const slider = document.getElementById(field);
   if (!input) return;
@@ -351,7 +363,7 @@ function stepControl(field, delta) {
 }
 
 function onSliderInput(field) {
-  if (lockStates[field] || isAllLocked) return;
+  if (lockStates[field] || isAllLocked || presetLockedFields.has(field)) return;
   const slider = document.getElementById(field);
   const input = document.getElementById(field + "-num");
   if (slider && input) {
@@ -361,7 +373,7 @@ function onSliderInput(field) {
 }
 
 function onDirectInput(field) {
-  if (lockStates[field] || isAllLocked) return;
+  if (lockStates[field] || isAllLocked || presetLockedFields.has(field)) return;
   const input = document.getElementById(field + "-num");
   const slider = document.getElementById(field);
   if (input && slider) {
@@ -373,7 +385,7 @@ function onDirectInput(field) {
 }
 
 function stepGrinderDial(direction) {
-  if (lockStates.grinder || isAllLocked) return;
+  if (lockStates.grinder || isAllLocked || presetLockedFields.has("grinder")) return;
   const input = document.getElementById("grinder-dial-num");
   const selectEl = document.getElementById("grinder-select");
   if (!input || !selectEl) return;
@@ -388,7 +400,7 @@ function stepGrinderDial(direction) {
 }
 
 function onGrinderDialDirectInput() {
-  if (lockStates.grinder || isAllLocked) return;
+  if (lockStates.grinder || isAllLocked || presetLockedFields.has("grinder")) return;
   const input = document.getElementById("grinder-dial-num");
   const selectEl = document.getElementById("grinder-select");
   const info = selectEl && window.getGrinderDisplayInfo ? window.getGrinderDisplayInfo(selectEl.value) : {};
@@ -434,27 +446,30 @@ function onGrinderChange() {
 // ============================================================================
 // 5. 드리퍼 · 원두 · 중량 · 모드 선택 핸들러
 // ============================================================================
-function selectDripper(dripperKey) {
-  currentDripper = dripperKey;
+function selectDripper(dripperKey, fromPreset = false) {
+  if (presetLockedFields.has("dripper") && !fromPreset) return;
   const d = (window.DRIPPERS || {})[dripperKey];
   if (!d) return;
-
+  currentDripper = dripperKey;
+  currentDripperLabel = d.fullName || d.name;
   document.documentElement.style.setProperty("--theme-color", d.themeColor);
   document.documentElement.style.setProperty("--theme-dark", d.themeDark);
   document.documentElement.style.setProperty("--theme-soft", d.themeSoft);
-
   const logoBadge = document.getElementById("logo-badge");
   if (logoBadge) logoBadge.textContent = d.badge;
-
   ["bluebottle", "hario", "kalita"].forEach(k => {
     const card = document.getElementById("card-" + k);
     if (card) card.classList.toggle("active", k === dripperKey);
+    if (card) card.disabled = presetLockedFields.has("dripper") && !fromPreset;
   });
-
-  applyOriginMatrix();
+  wizardState.dripper = true;
+  refreshWizard();
+  if (!fromPreset && currentBaristaPresetId) clearBaristaPreset(false);
+  if (!currentBaristaPresetId) applyOriginMatrix();
 }
 
 function selectWeightPreset(idx) {
+  if (presetLockedFields.has("dose") || isAllLocked || lockStates.dose) return;
   currentWeightIdx = idx;
   const weights = window.WEIGHTS || [15, 20, 25, 30, 35, 40, 50];
   for (let i = 0; i < weights.length; i++) {
@@ -465,69 +480,248 @@ function selectWeightPreset(idx) {
 }
 
 function selectBrewMode(modeKey) {
+  if (presetLockedFields.has("mode") || currentBaristaPresetId || isAllLocked) return;
   currentModeKey = modeKey;
   ["strong", "standard", "light", "bypass"].forEach(m => {
     const btn = document.getElementById("mbtn-" + m);
     if (btn) btn.classList.toggle("active", m === modeKey);
   });
-
-  const presetSel = document.getElementById("preset-select");
-  if (presetSel) presetSel.value = "common_mode";
-
   applyOriginMatrix();
 }
 
 function onOriginChange() {
+  wizardState.bean = true;
+  // 원두를 바꾸면 이전 레시피 유형/바리스타 잠금을 해제하고 다시 선택하도록 합니다.
+  if (currentBaristaPresetId) clearBaristaPreset(false);
+  currentBaristaPresetId = null;
+  currentBaristaPreset = null;
+  recipeType = null;
+  wizardState.recipe = false;
+  document.querySelectorAll('input[name="recipe-type"]').forEach(el => { el.checked = false; });
+  const generalOptions = document.getElementById("general-recipe-options");
+  const baristaOptions = document.getElementById("barista-recipe-options");
+  if (generalOptions) generalOptions.hidden = true;
+  if (baristaOptions) baristaOptions.hidden = true;
   const presetSel = document.getElementById("preset-select");
   if (presetSel) presetSel.value = "common_mode";
+  refreshWizard();
   applyOriginMatrix();
+}
+
+function initWizard() {
+  const typeInputs = document.querySelectorAll('input[name="recipe-type"]');
+  typeInputs.forEach(input => input.checked = false);
+  const weight = document.getElementById("weight-selector-group");
+  const mode = document.getElementById("mode-selector-group");
+  const preset = document.getElementById("preset-select");
+  if (preset) preset.value = "common_mode";
+  if (weight) weight.classList.add("is-disabled");
+  if (mode) mode.classList.add("is-disabled");
+  document.querySelectorAll("#mainContainer .panel").forEach(panel => panel.classList.add("wizard-settings-disabled"));
+  refreshWizard();
+}
+
+function refreshWizard() {
+  const s1 = document.getElementById("wizard-step-1");
+  const s2 = document.getElementById("wizard-step-2");
+  const s3 = document.getElementById("wizard-step-3");
+  if (s2) s2.hidden = !wizardState.dripper;
+  if (s3) s3.hidden = !wizardState.bean;
+  [[s1,wizardState.dripper],[s2,wizardState.bean],[s3,wizardState.recipe]].forEach(([el,done]) => {
+    if (!el) return;
+    el.classList.toggle("is-complete", !!done);
+    el.classList.toggle("is-current", !done);
+  });
+  const dLabel = document.getElementById("wizard-dripper-selected");
+  const originSel = document.getElementById("origin-select");
+  const bLabel = document.getElementById("wizard-bean-selected");
+  const rLabel = document.getElementById("wizard-recipe-selected");
+  if (dLabel) { dLabel.textContent = `선택됨: ${currentDripperLabel}`; dLabel.classList.toggle("visible", wizardState.dripper); }
+  const bean = originSel && window.ORIGIN_DB ? window.ORIGIN_DB[originSel.value] : null;
+  if (bLabel) { bLabel.textContent = bean ? `선택됨: ${bean.name}` : ""; bLabel.classList.toggle("visible", wizardState.bean && !!bean); }
+  if (rLabel) {
+    const msg = currentBaristaPreset ? `선택됨: ${currentBaristaPreset.baristaName} · ${currentBaristaPreset.recipeName}` : (recipeType === "general" ? "선택됨: 일반 모드" : "");
+    rLabel.textContent = msg;
+    rLabel.classList.toggle("visible", wizardState.recipe && !!msg);
+  }
+  const ready = wizardState.dripper && wizardState.bean && wizardState.recipe;
+  const settings = document.querySelectorAll("#mainContainer .panel");
+  settings.forEach(panel => panel.classList.toggle("wizard-settings-disabled", !ready));
+  const kpi = document.querySelector(".kpi-grid");
+  if (kpi) kpi.classList.toggle("wizard-settings-disabled", !ready);
+}
+
+function clearBaristaPreset(updateUi = true) {
+  currentBaristaPresetId = null;
+  currentBaristaPreset = null;
+  presetLockedFields.clear();
+  currentModeKey = "standard";
+  if (prePresetDripper && (window.DRIPPERS || {})[prePresetDripper]) {
+    const restoreKey = prePresetDripper;
+    prePresetDripper = null;
+    const restoreLabel = prePresetDripperLabel;
+    prePresetDripperLabel = null;
+    selectDripper(restoreKey, true);
+    if (restoreLabel) currentDripperLabel = restoreLabel;
+  }
+  ["bluebottle", "hario", "kalita"].forEach(k => {
+    const tab = document.getElementById("card-" + k);
+    if (tab) tab.disabled = false;
+  });
+  ["dose", "water", "temp", "time"].forEach(field => applyStandardLockUI(field, lockStates[field] || isAllLocked));
+  document.querySelectorAll("#weight-btns-wrap button").forEach(btn => {
+    btn.disabled = isAllLocked || lockStates.dose;
+  });
+  document.querySelectorAll("#mode-selector-group button").forEach(btn => {
+    btn.disabled = isAllLocked;
+  });
+  applyGrinderLockUI();
+  if (updateUi) {
+    const general = document.querySelector('input[name="recipe-type"][value="general"]');
+    const barista = document.querySelector('input[name="recipe-type"][value="barista"]');
+    if (general) general.checked = true;
+    if (barista) barista.checked = false;
+    const baristaOptions = document.getElementById("barista-recipe-options");
+    const generalOptions = document.getElementById("general-recipe-options");
+    if (baristaOptions) baristaOptions.hidden = true;
+    if (generalOptions) generalOptions.hidden = false;
+  }
+  const summary = document.getElementById("barista-preset-summary");
+  if (summary) summary.hidden = true;
+}
+
+function selectRecipeType(type) {
+  if (!wizardState.dripper || !wizardState.bean) {
+    alert("먼저 드리퍼와 원두를 선택해 주세요.");
+    return;
+  }
+  if (currentBaristaPresetId) clearBaristaPreset(false);
+  else presetLockedFields.clear();
+  recipeType = type;
+  const generalOptions = document.getElementById("general-recipe-options");
+  const baristaOptions = document.getElementById("barista-recipe-options");
+  if (generalOptions) generalOptions.hidden = type !== "general";
+  if (baristaOptions) baristaOptions.hidden = type !== "barista";
+  const weight = document.getElementById("weight-selector-group");
+  const mode = document.getElementById("mode-selector-group");
+  if (weight) weight.classList.toggle("is-disabled", type !== "general");
+  if (mode) mode.classList.toggle("is-disabled", type !== "general");
+  document.querySelectorAll("#weight-btns-wrap button").forEach(btn => {
+    btn.disabled = type !== "general" || isAllLocked || lockStates.dose;
+  });
+  document.querySelectorAll("#mode-selector-group button").forEach(btn => {
+    btn.disabled = type !== "general" || isAllLocked;
+  });
+  if (type === "general") {
+    const presetSel = document.getElementById("preset-select");
+    if (presetSel) presetSel.value = "common_mode";
+    currentModeKey = "standard";
+    const standard = document.getElementById("mbtn-standard");
+    if (standard) standard.classList.add("active");
+    ["strong", "light", "bypass"].forEach(m => document.getElementById("mbtn-"+m)?.classList.remove("active"));
+    wizardState.recipe = true;
+    applyOriginMatrix();
+  } else {
+    wizardState.recipe = false;
+    const presetSel = document.getElementById("preset-select");
+    if (presetSel) presetSel.value = "common_mode";
+  }
+  refreshWizard();
 }
 
 function onPresetSelectChange() {
   const presetSel = document.getElementById("preset-select");
-  if (!presetSel) return;
-  const val = presetSel.value;
-
-  if (val === "common_mode") {
-    applyOriginMatrix();
+  const val = presetSel ? presetSel.value : "common_mode";
+  if (!val || val === "common_mode") {
+    if (currentBaristaPresetId) clearBaristaPreset(false);
+    currentBaristaPresetId = null;
+    currentBaristaPreset = null;
+    recipeType = "barista";
+    wizardState.recipe = false;
+    const generalOptions = document.getElementById("general-recipe-options");
+    const baristaOptions = document.getElementById("barista-recipe-options");
+    if (generalOptions) generalOptions.hidden = true;
+    if (baristaOptions) baristaOptions.hidden = false;
+    refreshWizard();
     return;
   }
-
-  const doseNumInput = document.getElementById("dose-num");
-  const currentDose = doseNumInput ? doseNumInput.value : 30;
-  const scaled = window.getBaristaPresetWithScaling ? window.getBaristaPresetWithScaling(val, currentDose) : null;
+  const preset = (window.BARISTA_PRESETS || []).find(p => p.id === val);
+  if (!preset) return;
+  // 공식 원본 용량과 비율을 그대로 적용하며 임의로 현재 도징량에 맞춰 환산하지 않습니다.
+  const scaled = window.getBaristaPresetWithScaling ? window.getBaristaPresetWithScaling(val, preset.coffeeDose) : null;
   if (!scaled) return;
-
   const active = scaled.activeRecipe;
-  const doseInput = document.getElementById("dose-num");
-  const doseSlider = document.getElementById("dose");
-  const waterInput = document.getElementById("water-num");
-  const waterSlider = document.getElementById("water");
-  const tempInput = document.getElementById("temp-num");
-  const tempSlider = document.getElementById("temp");
-  const timeInput = document.getElementById("time-num");
-  const timeSlider = document.getElementById("time");
+  if (!currentBaristaPresetId) {
+    prePresetDripper = currentDripper;
+    prePresetDripperLabel = currentDripperLabel;
+  }
+  currentBaristaPresetId = val;
+  currentBaristaPreset = preset;
+  currentModeKey = "barista";
+  recipeType = "barista";
+  wizardState.recipe = true;
+  presetLockedFields = new Set(["dripper", "dose", "water", "temp", "time", "mode"]);
 
-  if (doseInput && !lockStates["dose"] && !isAllLocked) { doseInput.value = active.coffeeDose; doseSlider.value = active.coffeeDose; }
-  if (waterInput && !lockStates["water"] && !isAllLocked) { waterInput.value = active.waterAmount; waterSlider.value = active.waterAmount; }
-  if (tempInput && !lockStates["temp"] && !isAllLocked) { tempInput.value = active.temperature.recommendedC; tempSlider.value = active.temperature.recommendedC; }
-  if (timeInput && !lockStates["time"] && !isAllLocked) { timeInput.value = active.targetTime.targetSec; timeSlider.value = active.targetTime.targetSec; }
+  // 프리셋의 드리퍼가 기본 3종이면 그대로 선택. 특수 장비는 허위로 기본 드리퍼에 치환하지 않고 이름을 따로 명시합니다.
+  if ((window.DRIPPERS || {})[preset.dripper]) {
+    currentDripper = preset.dripper;
+    currentDripperLabel = (window.DRIPPERS[preset.dripper].fullName || window.DRIPPERS[preset.dripper].name);
+    const d = window.DRIPPERS[preset.dripper];
+    document.documentElement.style.setProperty("--theme-color", d.themeColor);
+    document.documentElement.style.setProperty("--theme-dark", d.themeDark);
+    document.documentElement.style.setProperty("--theme-soft", d.themeSoft);
+    ["bluebottle","hario","kalita"].forEach(k => {
+      const tab = document.getElementById("card-" + k);
+      if (tab) { tab.classList.toggle("active", k === preset.dripper); tab.disabled = true; }
+    });
+  } else {
+    currentDripper = preset.dripper;
+    currentDripperLabel = preset.dripperModel || preset.dripper;
+    const visual = window.DRIPPERS.hario;
+    document.documentElement.style.setProperty("--theme-color", visual.themeColor);
+    document.documentElement.style.setProperty("--theme-dark", visual.themeDark);
+    document.documentElement.style.setProperty("--theme-soft", visual.themeSoft);
+    ["bluebottle","hario","kalita"].forEach(k => { const tab=document.getElementById("card-"+k); if(tab){tab.classList.remove("active");tab.disabled=true;} });
+  }
+  const logo = document.getElementById("logo-badge");
+  if (logo) logo.textContent = (window.DRIPPERS[preset.dripper] || {}).badge || "★";
 
+  const setNum = (id, value) => { const el=document.getElementById(id); if(el) el.value=value; };
+  setNum("dose-num", active.coffeeDose); setNum("dose", active.coffeeDose);
+  setNum("water-num", active.waterAmount); setNum("water", active.waterAmount);
+  setNum("temp-num", active.temperature.recommendedC); setNum("temp", active.temperature.recommendedC);
+  setNum("time-num", active.targetTime.targetSec); setNum("time", active.targetTime.targetSec);
+  const generalRadio = document.querySelector('input[name="recipe-type"][value="general"]');
+  const baristaRadio = document.querySelector('input[name="recipe-type"][value="barista"]');
+  if (generalRadio) generalRadio.checked = false;
+  if (baristaRadio) baristaRadio.checked = true;
+  const generalOptions = document.getElementById("general-recipe-options");
+  const baristaOptions = document.getElementById("barista-recipe-options");
+  if (generalOptions) generalOptions.hidden = true;
+  if (baristaOptions) baristaOptions.hidden = false;
+  ["dose","water","temp","time"].forEach(field => applyStandardLockUI(field, lockStates[field] || isAllLocked));
+  applyGrinderLockUI();
+  const summary = document.getElementById("barista-preset-summary");
+  if (summary) {
+    summary.hidden = false;
+    const special = preset.requiresSpecialEquipment ? " · 특수 장비가 필요합니다." : "";
+    summary.textContent = `${preset.baristaName} · ${preset.recipeName} / 원본 ${preset.coffeeDose}g : ${preset.waterAmount}g · ${preset.grindGuidance}${special}`;
+  }
   const diagTitle = document.getElementById("diag-title");
   const diagDesc = document.getElementById("diag-desc");
   const sourceLink = document.getElementById("recipe-source-link");
-
-  if (diagTitle) diagTitle.textContent = `[바리스타 프리셋] ${scaled.baristaName} — ${scaled.recipeName}`;
-  if (diagDesc) diagDesc.textContent = scaled.scalingNotice;
-  if (sourceLink && scaled.sourceUrl) {
-    sourceLink.href = scaled.sourceUrl;
-    sourceLink.style.display = "inline";
-  }
-
+  if (diagTitle) diagTitle.textContent = `[바리스타 프리셋] ${preset.baristaName} — ${preset.recipeName}`;
+  if (diagDesc) diagDesc.textContent = `${preset.temperature.note} · ${preset.targetTime.note} ${scaled.scalingNotice}`;
+  if (sourceLink && preset.sourceUrl) { sourceLink.href = preset.sourceUrl; sourceLink.style.display = "inline"; }
+  // 중량 프리셋과 일반 모드 버튼은 잠금 상태를 명확히 보여줍니다.
+  document.querySelectorAll("#weight-btns-wrap button,#mode-selector-group button").forEach(btn => btn.disabled = true);
+  refreshWizard();
   updateDial();
 }
 
 function applyOriginMatrix() {
+  // 바리스타 프리셋의 원본 세팅은 원두 일반 추천 매트릭스가 덮어쓰지 않습니다.
+  if (currentBaristaPresetId) { updateDial(); return; }
   const selectEl = document.getElementById("origin-select");
   const originKey = selectEl ? selectEl.value : "geisha";
   const origin = (window.ORIGIN_DB || {})[originKey];
@@ -617,6 +811,10 @@ function updateDial() {
       const wRes = window.calculateBrewModeWater ? window.calculateBrewModeWater(dose, "bypass") : { dripperInputWaterG: 360, bypassHotWaterG: 120 };
       kpiWaterSub.textContent = `바이패스: 드리퍼 ${wRes.dripperInputWaterG}g + 서버온수 ${wRes.bypassHotWaterG}g`;
       if (kpiWaterBadge) kpiWaterBadge.textContent = "바이패스";
+    } else if (currentModeKey === "barista" && currentBaristaPreset) {
+      const label = `${currentBaristaPreset.baristaName} 프리셋`;
+      kpiWaterSub.textContent = `${label} · 원본 비율 1:${ratio.toFixed(1)}`;
+      if (kpiWaterBadge) kpiWaterBadge.textContent = "바리스타 원본";
     } else {
       const modeObj = (window.BREW_MODES || {})[currentModeKey] || { shortName: "표준" };
       kpiWaterSub.textContent = `모드: ${modeObj.shortName} (비율 1:${ratio.toFixed(1)})`;
@@ -636,6 +834,10 @@ function updateDial() {
   const hasTds = tdsVal !== null && tdsVal !== "" && Number(tdsVal) > 0;
   const hasBev = bevVal !== null && bevVal !== "" && Number(bevVal) > 0;
   const measured = window.calculateMeasuredBrewMetrics ? window.calculateMeasuredBrewMetrics(dose, tdsVal, bevVal) : { isMeasured: false };
+  const analysisEy = document.getElementById("analysis-measured-ey");
+  const analysisTds = document.getElementById("analysis-measured-tds");
+  if (analysisTds) analysisTds.textContent = hasTds ? `${Number(tdsVal).toFixed(2)}%` : "측정 필요";
+  if (analysisEy) analysisEy.textContent = measured.isMeasured ? `${measured.calculatedEY_percent.toFixed(2)}%` : "측정 필요";
 
   if (measured.isMeasured) {
     const ey = measured.calculatedEY_percent;
@@ -685,7 +887,7 @@ function drawTimeChart(targetTime, themeColor) {
 
   const padL = 36, padR = 20, padT = 20, padB = 28;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const maxT = 300;
+  const maxT = 360;
 
   ctx.strokeStyle = "#e9ecef";
   ctx.lineWidth = 1;
@@ -695,7 +897,7 @@ function drawTimeChart(targetTime, themeColor) {
   }
 
   ctx.fillStyle = "#868e96"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
-  [0, 60, 120, 180, 240, 300].forEach(sec => {
+  [0, 60, 120, 180, 240, 300, 360].forEach(sec => {
     ctx.fillText(`${sec}s`, padL + (sec / maxT) * plotW, H - 8);
   });
 
@@ -827,7 +1029,7 @@ function getRecommendedRecipeName() {
   const originKey = selectEl ? selectEl.value : "geisha";
   const bean = (window.ORIGIN_DB || {})[originKey];
   const beanShort = bean ? bean.name.split(" (")[0] : "원두";
-  const dripShort = window.DRIPPERS[currentDripper].name;
+  const dripShort = (window.DRIPPERS[currentDripper] || { name: currentDripperLabel || "특수 드리퍼" }).name || currentDripperLabel;
   const dose = document.getElementById("dose-num").value;
   const temp = document.getElementById("temp-num").value;
   const now = new Date();
@@ -835,6 +1037,10 @@ function getRecommendedRecipeName() {
 }
 
 function saveCurrentRecipe() {
+  if (!wizardState.dripper || !wizardState.bean || !wizardState.recipe) {
+    alert("드리퍼, 원두, 레시피를 먼저 선택해 주세요.");
+    return;
+  }
   const defaultName = getRecommendedRecipeName();
   const nameInput = prompt("저장할 레시피 이름을 확인해 주세요 (기본 추천 이름 자동 입력):", defaultName);
   if (!nameInput) return;
@@ -863,7 +1069,11 @@ function saveCurrentRecipe() {
     author: currentUserName,
     name: nameInput.trim(),
     dripper: currentDripper,
+    dripperLabel: currentDripperLabel,
     origin: originKey,
+    recipeType: recipeType || "general",
+    baristaPresetId: currentBaristaPresetId || "",
+    flavorRatings: getFlavorRatings(),
     dose: dose,
     grinderMode: grinderMode,
     grinderId: grinderMode === "registered" && grinderSelect ? grinderSelect.value : "",
@@ -898,14 +1108,15 @@ function downloadExcelFile(mode) {
     return;
   }
 
-  const headers = ["고유ID", "저장일시", "구분코드", "작성자", "레시피이름", "드리퍼", "산지키", "원두량(g)", "분쇄설정방식", "그라인더ID", "그라인더눈금", "일반분쇄도단계", "실측TDS(%)", "실측음료무게(g)", "물온도(℃)", "추출시간(초)", "물의양(g)", "수율정보", "맛한줄평", "측정상태"];
+  const headers = ["고유ID", "저장일시", "구분코드", "작성자", "레시피이름", "드리퍼", "산지키", "원두량(g)", "분쇄설정방식", "그라인더ID", "그라인더눈금", "일반분쇄도단계", "실측TDS(%)", "실측음료무게(g)", "물온도(℃)", "추출시간(초)", "물의양(g)", "수율정보", "맛한줄평", "측정상태", "레시피유형", "바리스타프리셋ID", "드리퍼표시명", "향미산미", "향미단맛", "향미쓴맛"];
   const escapeCsv = val => `"${String(val ?? "").replace(/"/g, '""')}"`;
 
   const rows = targetList.map(r => [
     r.id, r.date, r.roleCode, r.author, r.name, r.dripper, r.origin,
     r.dose, r.grinderMode || "none", r.grinderId || "", r.grinderSetting ?? "", r.generalGrindLevel ?? "",
     r.measuredTds ?? "", r.measuredBeverageMass ?? "", r.temp, r.time, r.water, r.ey, r.review,
-    r.measurementStatus || "legacy_unverified"
+    r.measurementStatus || "legacy_unverified", r.recipeType || "general", r.baristaPresetId || "", r.dripperLabel || "",
+    r.flavorRatings?.sour ?? "", r.flavorRatings?.sweet ?? "", r.flavorRatings?.bitter ?? ""
   ].map(escapeCsv).join(","));
 
   const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
@@ -990,6 +1201,10 @@ function handleExcelFileUpload(event) {
       const importedTds = hasV16Headers ? col(cols, "실측TDS(%)", -1) : "";
       const importedBeverageMass = hasV16Headers ? col(cols, "실측음료무게(g)", -1) : "";
       const importedGrinderSetting = hasV16Headers ? col(cols, "그라인더눈금", -1) : "";
+      const importedPresetId = hasV16Headers ? (col(cols, "바리스타프리셋ID", -1) || "") : "";
+      const importedPreset = (window.BARISTA_PRESETS || []).find(p => p.id === importedPresetId);
+      const rawDripper = col(cols, "드리퍼", 5) || "bluebottle";
+      const importedDripper = (window.DRIPPERS || {})[rawDripper] || (importedPreset && importedPreset.dripper === rawDripper ? rawDripper : "bluebottle");
       const importedTdsNum = Number(importedTds);
       const importedMassNum = Number(importedBeverageMass);
       const item = {
@@ -998,7 +1213,15 @@ function handleExcelFileUpload(event) {
         roleCode: col(cols, "구분코드", 2) || "",
         author: col(cols, "작성자", 3) || currentUserName,
         name: col(cols, "레시피이름", 4) || "복원된 레시피",
-        dripper: window.DRIPPERS[col(cols, "드리퍼", 5)] ? col(cols, "드리퍼", 5) : "bluebottle",
+        dripper: importedDripper,
+        dripperLabel: hasV16Headers ? (col(cols, "드리퍼표시명", -1) || (importedPreset && importedPreset.dripperModel) || "") : "",
+        recipeType: hasV16Headers ? (col(cols, "레시피유형", -1) || (importedPresetId ? "barista" : "general")) : "general",
+        baristaPresetId: importedPresetId,
+        flavorRatings: hasV16Headers ? {
+          sour: col(cols, "향미산미", -1) !== "" ? Number(col(cols, "향미산미", -1)) : null,
+          sweet: col(cols, "향미단맛", -1) !== "" ? Number(col(cols, "향미단맛", -1)) : null,
+          bitter: col(cols, "향미쓴맛", -1) !== "" ? Number(col(cols, "향미쓴맛", -1)) : null
+        } : { sour:null, sweet:null, bitter:null },
         origin: (window.ORIGIN_DB || {})[col(cols, "산지키", 6)] ? col(cols, "산지키", 6) : "geisha",
         dose: parseFloat(col(cols, "원두량(g)", 7)) || 30,
         grinderMode: grinderMode,
@@ -1042,13 +1265,17 @@ function getRecipeMetricsSummary(recipe) {
 }
 
 function getRecipeGrindSummary(recipe) {
-  if (!recipe || recipe.grinderMode === "none" || !recipe.grinderMode) return "설정 안 함";
+  if (!recipe || recipe.grinderMode === "none" || !recipe.grinderMode) return "과거 버전: 분쇄 정보 없음";
   if (recipe.grinderMode === "registered") {
     const grinder = (window.COFFEE_GRINDERS || []).find(g => g.id === recipe.grinderId);
     return `${grinder ? grinder.name : (recipe.grinderId || "등록 모델")} · ${recipe.grinderSetting ?? "눈금 미기록"}`;
   }
   if (recipe.grinderMode === "general") return `${recipe.generalGrindLevel || 3}단계 · ${getGeneralGrindLabel(recipe.generalGrindLevel || 3)}`;
   return "설정 안 함";
+}
+
+function escapeRecipeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
 }
 
 function renderRecipeBoard() {
@@ -1063,12 +1290,13 @@ function renderRecipeBoard() {
 
   grid.innerHTML = visible.map(r => `
     <div class="recipe-card">
-      <div style="font-weight:900; font-size:13px; margin-bottom:3px; color:var(--text-main);">${r.name}</div>
+      <div style="font-weight:900; font-size:13px; margin-bottom:3px; color:var(--text-main);">${escapeRecipeHtml(r.name)}</div>
       <div style="font-size:11px; color:#495057; line-height:1.4;">
         • <b>원두/물:</b> ${r.dose}g / ${r.water}g (${r.temp}°C)<br/>
         • <b>추출:</b> ${formatSecToKorean(r.time)} · ${getRecipeMetricsSummary(r)}<br/>
-        • <b>분쇄:</b> ${getRecipeGrindSummary(r)}<br/>
-        • <b>메모:</b> <span style="color:#d9480f; font-weight:700;">"${r.review}"</span>
+        • <b>드리퍼:</b> ${escapeRecipeHtml(r.dripperLabel || r.dripper || "")}<br/>
+        • <b>분쇄:</b> ${escapeRecipeHtml(getRecipeGrindSummary(r))}<br/>
+        • <b>메모:</b> <span style="color:#d9480f; font-weight:700;">"${escapeRecipeHtml(r.review)}"</span>
       </div>
       <button class="excel-btn load1" style="width:100%; margin-top:6px; padding:4px;" onclick="loadRecipeToDial(${r.id})">🔄 이 세팅으로 불러오기</button>
     </div>
@@ -1098,9 +1326,9 @@ function loadRecipeToDial(id) {
   if (timeInput) { timeInput.value = r.time; timeSlider.value = r.time; }
 
   // v1.6 분쇄 설정 복원. v1.5의 grind 값은 저항지수이므로 실제 분쇄 눈금으로 해석하지 않는다.
-  const restoredMode = ["registered", "general", "none"].includes(r.grinderMode)
-    ? r.grinderMode
-    : (r.grinderId ? "registered" : "none");
+  // none/미기록 레거시 값은 UI에서 제거했으므로, 불러올 때는 중간 단계로 시작하되 과거 원본 데이터는 덮어쓰지 않습니다.
+  const restoredMode = r.grinderId && r.grinderSetting !== null && r.grinderSetting !== undefined
+    ? "registered" : "general";
   const modeRadio = document.querySelector(`input[name="grinder-mode"][value="${restoredMode}"]`);
   if (modeRadio) modeRadio.checked = true;
   if (restoredMode === "registered") {
@@ -1111,12 +1339,38 @@ function loadRecipeToDial(id) {
       const dialInput = document.getElementById("grinder-dial-num");
       if (dialInput && r.grinderSetting !== null && r.grinderSetting !== undefined && r.grinderSetting !== "") dialInput.value = r.grinderSetting;
     }
-  } else if (restoredMode === "general" && r.generalGrindLevel) {
-    const levelRadio = document.querySelector(`input[name="general-grind-level"][value="${Number(r.generalGrindLevel)}"]`);
+  } else if (restoredMode === "general") {
+    const level = Number(r.generalGrindLevel) || 3;
+    const levelRadio = document.querySelector(`input[name="general-grind-level"][value="${level}"]`);
     if (levelRadio) levelRadio.checked = true;
   }
   onGrinderModeChange();
 
+  currentDripperLabel = r.dripperLabel || ((window.DRIPPERS || {})[r.dripper]?.fullName) || currentDripperLabel;
+  currentBaristaPresetId = null;
+  currentBaristaPreset = null;
+  recipeType = currentBaristaPreset ? "barista" : "general";
+  wizardState = { dripper: true, bean: true, recipe: true };
+  const recipeRadio = document.querySelector(`input[name="recipe-type"][value="${recipeType}"]`);
+  if (recipeRadio) recipeRadio.checked = true;
+  const presetSelect = document.getElementById("preset-select");
+  if (presetSelect) presetSelect.value = r.baristaPresetId || "common_mode";
+  if (r.baristaPresetId) {
+    recipeType = "barista";
+    const baristaOptions = document.getElementById("barista-recipe-options");
+    const generalOptions = document.getElementById("general-recipe-options");
+    if (baristaOptions) baristaOptions.hidden = false;
+    if (generalOptions) generalOptions.hidden = true;
+    onPresetSelectChange();
+  } else {
+    clearBaristaPreset(false);
+    recipeType = "general";
+    const go=document.getElementById("general-recipe-options");if(go)go.hidden=false;
+    const bo=document.getElementById("barista-recipe-options");if(bo)bo.hidden=true;
+  }
+  ["sour","sweet","bitter"].forEach(key => { const el=document.getElementById(`flavor-${key}`); if(el)el.value=r.flavorRatings?.[key] ?? 0; });
+  refreshWizard();
+  updateFlavorChart();
   const tdsInput = document.getElementById("measured-tds");
   const bevInput = document.getElementById("measured-bev");
   if (tdsInput) tdsInput.value = r.measuredTds ?? "";
@@ -1125,6 +1379,77 @@ function loadRecipeToDial(id) {
   const details = document.getElementById("recipe-board-details");
   if (details) details.open = false;
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+
+// ============================================================================
+// v1.65 도움말 · 단계 선택 · 인증 세션
+// ============================================================================
+const MASTER_SESSION_KEY = "brewmap_master_session_v165";
+const MASTER_SESSION_DAYS = 10;
+function initMasterSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem(MASTER_SESSION_KEY) || "null");
+    if (session && session.expiresAt > Date.now() && session.role === "master") {
+      completeLogin(true, "오찬욱", false);
+      return;
+    }
+    if (session) localStorage.removeItem(MASTER_SESSION_KEY);
+  } catch (error) { console.warn("마스터 세션을 읽지 못했습니다.", error); }
+}
+function saveMasterSession() {
+  const expiresAt = Date.now() + MASTER_SESSION_DAYS * 24 * 60 * 60 * 1000;
+  try { localStorage.setItem(MASTER_SESSION_KEY, JSON.stringify({ role: "master", expiresAt })); }
+  catch (error) { console.warn("마스터 세션 저장 실패:", error); }
+}
+function showInlineHelp(topic) {
+  const help = {
+    dripper: ["드리퍼 선택", "사용 중인 드리퍼를 먼저 선택합니다. 바리스타 프리셋을 고르면 원본 레시피에 지정된 드리퍼가 자동 선택되고 변경이 잠깁니다."],
+    bean: ["원두 선택", "사용할 원두 산지·품종 정보를 선택합니다. 원두 정보는 일반 모드의 시작 세팅과 추천 가이드에 반영됩니다."],
+    recipe: ["레시피 유형", "일반 모드는 원두량과 공통 추출 모드를 직접 선택합니다. 특별 바리스타 모드는 원본 프리셋의 드리퍼·도징·물량·온도·목표 시간과 푸어 일정을 적용하고 지정값을 잠급니다."],
+    dose: ["원두량", "추출에 사용할 건조 원두의 질량입니다. 바리스타 프리셋에서 지정한 원두량은 원본 재현을 위해 잠깁니다."],
+    water: ["물 투입량", "드리퍼 또는 서버에 붓는 총 물의 질량입니다. 추출된 완성 음료량과 같지 않습니다. 바이패스에서는 드리퍼 투입량과 별도 온수량을 구분합니다."],
+    temp: ["추출 수온", "추출에 사용하는 물의 목표 온도입니다. 실제 주전자 출수 온도 및 추출 중 온도와 차이가 있을 수 있습니다."],
+    time: ["목표 추출 시간", "레시피의 목표 종료 시간입니다. 분쇄도·원두·물줄기·교반과 드리퍼 상태에 따라 실제 배수 시간은 달라집니다."],
+    grind: ["분쇄 설정", "등록 모델은 해당 그라인더 고유 눈금만 표시합니다. 일반 5단계는 모델을 모를 때 사용하는 정성적 분류이며 마이크론이나 다른 그라인더 눈금으로 환산하지 않습니다."],
+    metrics: ["수율(EY)과 농도(TDS)", "SCA 참고 목표 범위와 실측값을 분리해서 표시합니다. 검증된 개인별 예측 모델은 포함하지 않으며, 실제 EY는 굴절계 TDS와 실제 완성 음료 무게가 모두 있어야 계산할 수 있습니다."],
+    flavor: ["향미 평가", "산미·단맛·쓴맛은 사용자가 실제로 시음한 뒤 0~5점으로 기록합니다. 설정값만으로 향미 점수를 예측하지 않습니다."],
+    extraction: ["시간별 성분 용출 개념도", "시간축에 따른 성분 용출 경향을 설명하는 개념 곡선입니다. 특정 원두의 실측 화학 분석 데이터가 아니며 목표 시간선은 현재 레시피의 목표 시간입니다."],
+    sca: ["SCA 골든컵 차트", "참고 목표 영역은 TDS 1.15~1.35%, EY 18~22%로 표시합니다. 개인 취향이나 모든 추출 방식에 대한 절대적 품질 판정은 아닙니다."]
+  };
+  const item = help[topic] || ["도움말", "관련 기능의 설명을 준비 중입니다."];
+  const title = document.getElementById("inlineHelpTitle");
+  const text = document.getElementById("inlineHelpText");
+  const modal = document.getElementById("inlineHelpModal");
+  if (title) title.textContent = item[0];
+  if (text) text.textContent = item[1];
+  if (modal) modal.classList.add("open");
+}
+function closeInlineHelp() { const modal=document.getElementById("inlineHelpModal"); if(modal)modal.classList.remove("open"); }
+function getFlavorRatings() {
+  const read = key => { const el=document.getElementById(`flavor-${key}`); const n=el?Number(el.value):0; return n>0?n:null; };
+  return { sour: read("sour"), sweet: read("sweet"), bitter: read("bitter") };
+}
+function updateFlavorChart() {
+  const values = ["sour","sweet","bitter"].map(key => {
+    const el=document.getElementById(`flavor-${key}`); const value=el?Number(el.value):0;
+    const output=document.getElementById(`flavor-${key}-value`);
+    if(output) output.textContent=value>0?`${value.toFixed(1)} / 5`:"미평가";
+    return value;
+  });
+  const canvas=document.getElementById("flavorChart"); if(!canvas)return;
+  const ctx=canvas.getContext("2d"), W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const labels=["산미","단맛","쓴맛"], colors=["#d69a49","#659a73","#7588a8"];
+  const max=5, left=54, right=20, top=16, row=43, usable=W-left-right;
+  ctx.font="12px sans-serif"; ctx.textBaseline="middle";
+  values.forEach((v,i)=>{
+    const y=top+i*row;
+    ctx.fillStyle="#596b5d"; ctx.textAlign="right"; ctx.fillText(labels[i],left-10,y+9);
+    ctx.fillStyle="#edf2ed"; ctx.fillRect(left,y,usable,18);
+    if(v>0){ctx.fillStyle=colors[i];ctx.fillRect(left,y,usable*v/max,18);}
+    ctx.fillStyle="#647468";ctx.textAlign="left";ctx.fillText(v>0?`${v.toFixed(1)}/5`:"미평가",left+usable+5,y+9);
+  });
 }
 
 // ============================================================================
@@ -1310,6 +1635,38 @@ function buildPourStages() {
   const water = parseFloat(document.getElementById("water-num").value) || 480;
   const totalTime = parseFloat(document.getElementById("time-num").value) || 210;
 
+  if (currentBaristaPreset && Array.isArray(currentBaristaPreset.pourSchedule) && currentBaristaPreset.pourSchedule.length) {
+    const raw = currentBaristaPreset.pourSchedule;
+    const scale = dose / currentBaristaPreset.coffeeDose;
+    const stages = raw.map((step, idx) => {
+      const prev = idx === 0 ? 0 : raw[idx - 1].cumulativeWaterG;
+      const cumulative = Math.round(step.cumulativeWaterG * scale);
+      const start = Number(step.startTimeSec ?? step.timeSec ?? 0);
+      const pourEnd = Number(step.endTimeSec ?? start + 12);
+      const end = Number(step.waitUntilSec ?? pourEnd);
+      const stageName = step.phase && /bloom/i.test(step.phase) ? "뜸들이기" : `${idx}차 푸어`;
+      return {
+        id: idx === 0 ? "bloom" : `barista-pour-${idx}`,
+        name: `${idx+1}) ${stageName}`,
+        startSec: start, pourEndSec: Math.max(start+1,pourEnd), endSec: Math.max(pourEnd,end),
+        startWater: Math.round(prev*scale), targetWater: cumulative,
+        addWater: cumulative - Math.round(prev*scale),
+        voiceStart: `${stageName}입니다. ${Number(step.pourAmountG ?? (step.cumulativeWaterG-prev)).toFixed(0)}g을 추가해 누적 ${cumulative}g까지 부으세요. ${step.instruction || ""}`,
+        voiceMid: "물을 멈추고 다음 단계까지 기다리세요.", spokenStart:false, spokenMid:false
+      };
+    });
+    const scheduleTarget = stages[stages.length - 1]?.targetWater || water;
+    if (scheduleTarget < water) stages[stages.length - 1].targetWater = water;
+    stages.unshift({id:"prep",name:"0. 추출 준비 (10초 카운트다운)",startSec:-10,pourEndSec:0,endSec:0,startWater:0,targetWater:0,addWater:0,voiceStart:`${currentUserName} 바리스타님, 저울을 확인하세요. 10초 후 원본 프리셋 일정으로 시작합니다.`,voiceMid:null,spokenStart:false,spokenMid:false});
+    stages.finishVoice = `바리스타 원본 푸어 일정이 완료되었습니다. 드리퍼를 치워주세요.`;
+    stages.finishSpoken = false;
+    pourStages = stages;
+    const badgeEl=document.getElementById("modal-bypass-badge"); if(badgeEl)badgeEl.textContent="[바리스타 원본 푸어 일정]";
+    const listEl=document.getElementById("schedule-list");
+    if(listEl) listEl.innerHTML=stages.slice(1).map((stage,idx)=>`<div class="schedule-item" id="sched-row-${idx+1}"><div style="font-weight:800;color:var(--theme-dark);">${formatMMSS(stage.startSec)} ~ ${formatMMSS(stage.endSec)}</div><div>${stage.name} <span style="font-size:11px;color:#868e96;">(+${stage.addWater}g)</span></div><div style="text-align:right;font-weight:900;">누적 ${stage.targetWater}g</div></div>`).join("");
+    return;
+  }
+
   let w1 = Math.min(Math.round(water * 0.24), Math.round(dose * 2.2));
   let w2 = Math.round(water * 0.45);
   let w3 = Math.round(water * 0.74);
@@ -1446,7 +1803,11 @@ function buildPourStages() {
 }
 
 function openBrewModal() {
-  const d = (window.DRIPPERS || {})[currentDripper] || { fullName: "드리퍼" };
+  if (!wizardState.dripper || !wizardState.bean || !wizardState.recipe) {
+    alert("먼저 드리퍼, 원두, 레시피를 순서대로 선택해 주세요.");
+    return;
+  }
+  const d = (window.DRIPPERS || {})[currentDripper] || { fullName: currentDripperLabel || "특수 드리퍼" };
   const dose = parseFloat(document.getElementById("dose-num").value) || 30;
   const temp = parseFloat(document.getElementById("temp-num").value) || 95.0;
   const time = parseFloat(document.getElementById("time-num").value) || 210;
@@ -1454,8 +1815,9 @@ function openBrewModal() {
 
   const modalTitle = document.getElementById("modal-title");
   const modalSub = document.getElementById("modal-subtitle");
-  if (modalTitle) modalTitle.textContent = `${currentUserName} 바리스타 3D 브루잉 가이드 (${d.fullName})`;
-  if (modalSub) modalSub.textContent = `원두 ${dose}g · 물 투입량 ${water}g · ${temp.toFixed(1)}°C · 목표 시간 ${formatSecToKorean(time)}`;
+  if (modalTitle) modalTitle.textContent = `${currentUserName} 바리스타 3D 브루잉 가이드 (${currentDripperLabel || d.fullName})`;
+  const specialNote = currentBaristaPreset?.requiresSpecialEquipment ? " · 특수 장비 전용 프리셋: 3D 드리퍼 그림은 추출 순서 안내용 개념 표현입니다." : "";
+  if (modalSub) modalSub.textContent = `원두 ${dose}g · 물 투입량 ${water}g · ${temp.toFixed(1)}°C · 목표 시간 ${formatSecToKorean(time)}${specialNote}`;
 
   buildPourStages();
   resetBrewTimer();
@@ -1480,6 +1842,7 @@ function syncStartButtonsText(label) {
 }
 
 function resetBrewTimer() {
+  brewCompletionPromptShown = false;
   brewRunning = false;
   brewElapsed = -10.0;
   lastBeepSec = null;
@@ -1498,7 +1861,7 @@ function resetBrewTimer() {
   if (bTitle) bTitle.textContent = "준비 완료: [▶ 추출 시작]을 눌러주세요";
   if (bDesc) bDesc.textContent = "10초 준비 카운트다운 후 물 붓기와 멈춤 대기를 안내합니다.";
 
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= Math.max(4, pourStages.length - 1); i++) {
     const row = document.getElementById("sched-row-" + i);
     if (row) row.className = "schedule-item";
   }
@@ -1543,6 +1906,13 @@ function brewLoop(now) {
     brewRunning = false;
     setPouringWaterSound(false);
     syncStartButtonsText("↺ 다시 추출");
+    if (!brewCompletionPromptShown) {
+      brewCompletionPromptShown = true;
+      window.setTimeout(() => {
+        const shouldSave = window.confirm("추출이 완료되었습니다. 방금 내린 레시피를 저장하시겠습니까?");
+        if (shouldSave) saveCurrentRecipe();
+      }, 350);
+    }
   }
 
   if (brewElapsed >= -3.2 && brewElapsed < -0.1) {
@@ -1630,7 +2000,7 @@ function brewLoop(now) {
     }
   }
 
-  for (let i = 1; i <= 4; i++) {
+  for (let i = 1; i <= Math.max(4, pourStages.length - 1); i++) {
     const row = document.getElementById("sched-row-" + i);
     if (!row) continue;
     if (brewElapsed >= totalTime || i < activeIdx) {

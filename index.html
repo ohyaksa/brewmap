@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>오찬욱 바리스타 3D 브루잉 다이얼러 v1.6</title>
+  <title>오찬욱 바리스타 3D 브루잉 다이얼러 v1.65</title>
   <style>
     :root {
       --theme-color: #00a1e4;
@@ -919,6 +919,126 @@
     @media (max-width: 600px) {
       .controls-2col-grid { grid-template-columns: 1fr; }
     }
+
+
+    /* ================= v1.65 · Modern Sage UI ================= */
+    :root {
+      --theme-color: #78947b;
+      --theme-dark: #42634a;
+      --theme-soft: #edf4ee;
+      --bg-color: #f4f7f4;
+      --card-bg: #ffffff;
+      --text-main: #26332a;
+      --text-sub: #718075;
+      --border-color: #e1e9e2;
+      --sour-color: #d69a49;
+      --sweet-color: #659a73;
+      --bitter-color: #7588a8;
+      --lock-color: #b66b68;
+    }
+    body { background:var(--bg-color); color:var(--text-main); padding:clamp(10px,2vw,24px); font-size:14px; line-height:1.5; }
+    .container { max-width:1440px; }
+    header, .top-selector-bar, .panel, .recipe-board, .kpi-card { border:1px solid var(--border-color); border-radius:18px; box-shadow:0 8px 28px rgba(38,51,42,.045); }
+    header { padding:16px 20px; margin-bottom:14px; }
+    .logo-badge,.auth-logo { background:linear-gradient(135deg,#91aa94,#597b61); }
+    h1 { font-size:18px; letter-spacing:-.035em; }
+    .subtitle { color:#7a897d; font-size:12px; }
+    .btn-3d,.btn-3d-gold,.btn-3d-dark { background:#5f8067; color:#fff; border:1px solid #5f8067; border-radius:11px; box-shadow:none; text-shadow:none; font-weight:750; padding:10px 15px; transition:background .16s,transform .16s,box-shadow .16s; }
+    .btn-3d:hover,.btn-3d-gold:hover,.btn-3d-dark:hover { filter:none; transform:translateY(-1px); background:#4e7056; box-shadow:0 5px 12px rgba(45,76,52,.12); }
+    .btn-3d:active,.btn-3d-gold:active,.btn-3d-dark:active { transform:translateY(0); box-shadow:none; }
+    .btn-3d-gold { background:#a77b43; border-color:#a77b43; }
+    .btn-3d-dark { background:#3d5142; border-color:#3d5142; }
+    .header-actions { gap:9px; }
+    .top-selector-bar { padding:16px; gap:12px; background:transparent; border:0; box-shadow:none; }
+    .wizard-step { background:#fff; border:1px solid var(--border-color); border-radius:16px; padding:16px 18px; box-shadow:0 5px 20px rgba(38,51,42,.035); min-width:0; }
+    .wizard-step.is-complete { border-color:#c7d8c9; }
+    .wizard-step.is-current { box-shadow:0 0 0 2px rgba(120,148,123,.13),0 7px 24px rgba(38,51,42,.045); }
+    .wizard-step[hidden],.wizard-hidden[hidden] { display:none !important; }
+    .wizard-settings-disabled { opacity:.44; filter:saturate(.72); pointer-events:none; user-select:none; }
+    .wizard-settings-disabled .panel-title { opacity:.9; }
+    .wizard-heading { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:11px; }
+    .wizard-number { display:inline-flex; width:30px; height:30px; border-radius:10px; justify-content:center; align-items:center; background:#edf4ee; color:#42634a; font-size:12px; font-weight:900; }
+    .wizard-title { font-size:15px; font-weight:850; letter-spacing:-.02em; }
+    .wizard-prompt { color:#7a897d; font-size:12px; font-weight:600; }
+    .wizard-selection { display:none; margin-top:10px; color:#42634a; font-size:12px; font-weight:750; }
+    .wizard-selection.visible { display:block; }
+    .dripper-tabs { flex-wrap:wrap; }
+    .dripper-tab,.p-btn,.compact-select { border-radius:10px; border-color:#dce6dd; background:#f8faf8; color:#526456; font-weight:700; }
+    .dripper-tab { padding:9px 14px; }
+    .dripper-tab.active,.p-btn.active { background:#eaf2eb; color:#355b3f; border-color:#91ad95; }
+    .mode-btn.active { background:#41664a; color:#fff; border-color:#41664a; }
+    .recipe-type-options { display:flex; flex-wrap:wrap; gap:8px; margin:7px 0 12px; }
+    .recipe-type-option { display:flex; align-items:center; gap:8px; padding:10px 13px; border:1px solid #dce6dd; border-radius:11px; background:#f8faf8; font-weight:750; cursor:pointer; }
+    .recipe-type-option input { accent-color:#5f8067; }
+    .selector-row { justify-content:flex-start; gap:12px 18px; }
+    .selector-group { align-items:flex-start; }
+    .selector-group.is-disabled { opacity:.45; pointer-events:none; }
+    .sel-label { color:#526456; }
+    .kpi-grid { gap:12px; margin:2px 0 14px; }
+    .kpi-card { padding:14px 16px; min-width:0; }
+    .kpi-head { color:#7b897e; font-size:11px; }
+    .kpi-val { white-space:normal; overflow-wrap:anywhere; font-size:16px; color:#2f4234; }
+    .kpi-sub { white-space:normal; overflow-wrap:anywhere; line-height:1.4; }
+    .main-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:start; }
+    .panel { padding:18px; min-width:0; overflow:hidden; gap:16px; }
+    .panel-title { font-size:15px; margin-bottom:12px; flex-wrap:wrap; }
+    .controls-2col-grid { gap:11px; }
+    .ctrl-box { border:1px solid #e4ebe5; border-radius:13px; background:#f9fbf9; padding:12px; min-width:0; }
+    .ctrl-box.is-locked { border-color:#d9c3c1; background:#fbf7f6; }
+    .ctrl-title { color:#405547; font-size:12.5px; }
+    .lock-all-btn,.lock-btn,.step-btn { border-radius:9px; border-color:#dce6dd; background:#fff; color:#506556; }
+    .panel-lock-footer { display:flex; justify-content:flex-end; margin-top:12px; padding-top:10px; border-top:1px solid #e7eee8; }
+    .lock-btn { padding:5px 8px; }
+    .lock-btn.locked,.lock-all-btn.locked { background:#f6e9e8; color:#a55753; border-color:#d9b8b5; }
+    .direct-num-input { border:1px solid #d6e0d7; border-radius:8px; color:#42634a; }
+    .step-btn { width:30px; height:30px; font-size:15px; }
+    input[type="range"].coarse-slider { accent-color:#73957a; }
+    .grind-mode-option,.general-grind-options label { border:1px solid #e2eae3; background:#fff; border-radius:10px; padding:9px 11px; }
+    .grind-mode-option input,.general-grind-options input { accent-color:#5f8067; }
+    .measured-bar { padding:12px 14px; border:1px solid #e3ebe4; border-radius:12px; background:#f7faf7; }
+    .mini-input { border:1px solid #d6e0d7; border-radius:7px; padding:5px; }
+    .balance-strip { background:#f8faf8; border:1px solid #e4ebe5; border-radius:12px; padding:12px; }
+    .charts-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; min-width:0; }
+    .charts-grid > div { min-width:0; overflow:hidden; }
+    canvas.chart-canvas { width:100%; max-width:100%; height:auto; aspect-ratio:2 / 1; border:1px solid #e3eae4; border-radius:11px; }
+    .diagnosis-bar { border-radius:12px; background:#edf4ee; border-left:3px solid #78947b; padding:12px; }
+    .source-link { color:#4d7054; }
+    details.recipe-board { border:1px solid var(--border-color); border-radius:16px; padding:14px 16px; }
+    .recipe-card { border:1px solid #e2eae3; border-radius:12px; padding:12px; }
+    .recipe-grid { grid-template-columns:repeat(auto-fill,minmax(245px,1fr)); gap:10px; }
+    .excel-btn { border-radius:9px; border:1px solid #dce6dd; background:#f8faf8; color:#526456; }
+    .help-btn,.help-mini { display:inline-flex; align-items:center; justify-content:center; border:1px solid #d4dfd5; color:#54745b; background:#f5f8f5; border-radius:50%; cursor:pointer; font-weight:850; }
+    .help-btn { width:35px; height:35px; border-radius:10px; }
+    .help-mini { width:19px; height:19px; font-size:11px; margin-left:5px; vertical-align:middle; }
+    .help-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(23,37,27,.45); z-index:12000; padding:18px; }
+    .help-overlay.open { display:flex; }
+    .help-dialog { width:min(460px,100%); background:#fff; border-radius:18px; padding:22px; box-shadow:0 24px 60px rgba(0,0,0,.2); }
+    .help-dialog h3 { color:#385b40; margin:0 0 8px; font-size:17px; }
+    .flavor-inputs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0; }
+    .flavor-input { border:1px solid #e2eae3; border-radius:11px; padding:9px; background:#f9fbf9; min-width:0; }
+    .flavor-input label { display:block; font-size:11px; font-weight:800; margin-bottom:4px; }
+    .flavor-input input { width:100%; accent-color:#6d9073; }
+    .metrics-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:10px 0 14px; }
+    .metric-tile { border:1px solid #e2eae3; border-radius:11px; padding:10px; min-width:0; background:#fbfcfb; }
+    .metric-tile small { display:block; color:#7b897e; font-size:10px; font-weight:800; }
+    .metric-tile strong { display:block; font-size:14px; color:#385b40; overflow-wrap:anywhere; }
+    .barista-note { border-radius:10px; background:#f2f6f2; padding:9px 11px; color:#5e7161; font-size:11px; margin-top:7px; }
+    button:disabled,select:disabled,input:disabled { cursor:not-allowed !important; }
+    @media(max-width:1050px) { .main-grid { grid-template-columns:minmax(0,1fr); } }
+    @media(max-width:700px) {
+      body { padding:9px; }
+      header { align-items:flex-start; }
+      .header-actions { width:100%; }
+      .header-actions button { flex:1; }
+      .kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .charts-grid { grid-template-columns:minmax(0,1fr); }
+      .controls-2col-grid { grid-template-columns:1fr; }
+      .flavor-inputs { grid-template-columns:1fr; }
+      .metrics-pair { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .wizard-step { padding:13px; }
+      .dripper-tab { flex:1; justify-content:center; }
+    }
+
   </style>
 </head>
 <body>
@@ -972,6 +1092,7 @@
       </div>
 
       <div class="header-actions">
+        <button class="help-btn" type="button" onclick="window.open('help.html','_blank','noopener')" title="도움말" aria-label="도움말">?</button>
         <button id="btn-invite-link" class="excel-btn load1" style="display:none;" onclick="createInviteLink()">
           🔗 지인 초대링크 복사
         </button>
@@ -981,55 +1102,63 @@
       </div>
     </header>
 
-    <!-- 상단 통합 선택 바 (1행: 드리퍼 3종 탭 + 원두 24종 + 전문 프리셋 / 2행: 중량 7단계 + 추출 모드 4종) -->
-    <div class="top-selector-bar">
-      <div class="selector-row">
-        <div class="selector-group">
-          <span class="sel-label">드리퍼:</span>
-          <div class="dripper-tabs">
-            <button class="dripper-tab active" id="card-bluebottle" onclick="selectDripper('bluebottle')">🔵 블루보틀</button>
-            <button class="dripper-tab" id="card-hario" onclick="selectDripper('hario')">🔺 하리오 V60</button>
-            <button class="dripper-tab" id="card-kalita" onclick="selectDripper('kalita')">🌊 칼리타 웨이브</button>
+    <!-- v1.65 단계별 레시피 설정 마법사 -->
+    <div class="top-selector-bar" id="recipe-wizard">
+      <section class="wizard-step is-current" id="wizard-step-1">
+        <div class="wizard-heading"><span class="wizard-number">01</span><span class="wizard-title">드리퍼</span><span class="wizard-prompt">1. 드리퍼를 선택하세요.</span><button class="help-mini" onclick="showInlineHelp('dripper')" aria-label="드리퍼 도움말">?</button></div>
+        <div class="dripper-tabs">
+          <button class="dripper-tab" id="card-bluebottle" onclick="selectDripper('bluebottle')">블루보틀</button>
+          <button class="dripper-tab" id="card-hario" onclick="selectDripper('hario')">하리오 V60</button>
+          <button class="dripper-tab" id="card-kalita" onclick="selectDripper('kalita')">칼리타 웨이브</button>
+        </div>
+        <div class="wizard-selection" id="wizard-dripper-selected"></div>
+      </section>
+
+      <section class="wizard-step wizard-hidden" id="wizard-step-2" hidden>
+        <div class="wizard-heading"><span class="wizard-number">02</span><span class="wizard-title">원두</span><span class="wizard-prompt">2. 원두 종류를 선택하세요.</span><button class="help-mini" onclick="showInlineHelp('bean')" aria-label="원두 도움말">?</button></div>
+        <select id="origin-select" class="compact-select" onchange="onOriginChange()" style="width:min(100%,430px);max-width:100%;"></select>
+        <div class="wizard-selection" id="wizard-bean-selected"></div>
+      </section>
+
+      <section class="wizard-step wizard-hidden" id="wizard-step-3" hidden>
+        <div class="wizard-heading"><span class="wizard-number">03</span><span class="wizard-title">레시피</span><span class="wizard-prompt">3. 레시피를 선택하세요. (일반 또는 특별 바리스타 모드)</span><button class="help-mini" onclick="showInlineHelp('recipe')" aria-label="레시피 도움말">?</button></div>
+        <div class="recipe-type-options" role="radiogroup" aria-label="레시피 유형">
+          <label class="recipe-type-option"><input type="radio" name="recipe-type" value="general" onchange="selectRecipeType('general')"> 일반 모드</label>
+          <label class="recipe-type-option"><input type="radio" name="recipe-type" value="barista" onchange="selectRecipeType('barista')"> 특별 바리스타 모드</label>
+        </div>
+        <div id="general-recipe-options" class="wizard-hidden" hidden>
+          <div class="selector-row">
+            <div class="selector-group" id="weight-selector-group">
+              <span class="sel-label">원두 중량:</span>
+              <div class="pill-btns" id="weight-btns-wrap">
+                <button class="p-btn" id="wbtn-0" onclick="selectWeightPreset(0)">15g</button>
+                <button class="p-btn" id="wbtn-1" onclick="selectWeightPreset(1)">20g</button>
+                <button class="p-btn" id="wbtn-2" onclick="selectWeightPreset(2)">25g</button>
+                <button class="p-btn active" id="wbtn-3" onclick="selectWeightPreset(3)">30g</button>
+                <button class="p-btn" id="wbtn-4" onclick="selectWeightPreset(4)">35g</button>
+                <button class="p-btn" id="wbtn-5" onclick="selectWeightPreset(5)">40g</button>
+                <button class="p-btn" id="wbtn-6" onclick="selectWeightPreset(6)">50g</button>
+              </div>
+            </div>
+            <div class="selector-group" id="mode-selector-group">
+              <span class="sel-label">추출 모드:</span>
+              <div class="pill-btns">
+                <button class="p-btn mode-btn" id="mbtn-strong" onclick="selectBrewMode('strong')">진하게 (1:14)</button>
+                <button class="p-btn mode-btn active" id="mbtn-standard" onclick="selectBrewMode('standard')">표준 (1:16)</button>
+                <button class="p-btn mode-btn" id="mbtn-light" onclick="selectBrewMode('light')">연하게 (1:18)</button>
+                <button class="p-btn mode-btn" id="mbtn-bypass" onclick="selectBrewMode('bypass')">바이패스 (1:12+온수)</button>
+              </div>
+            </div>
           </div>
         </div>
-
-        <div class="selector-group">
-          <span class="sel-label">원두(24종):</span>
-          <select id="origin-select" class="compact-select" onchange="onOriginChange()"></select>
-        </div>
-
-        <div class="selector-group">
-          <span class="sel-label">레시피 기준:</span>
-          <select id="preset-select" class="compact-select" onchange="onPresetSelectChange()">
-            <option value="common_mode">공통 4모드 (1:14 / 1:16 / 1:18 / 바이패스)</option>
+        <div id="barista-recipe-options" class="wizard-hidden" hidden>
+          <select id="preset-select" class="compact-select" onchange="onPresetSelectChange()" style="width:min(100%,560px);max-width:100%;">
+            <option value="common_mode">바리스타 프리셋을 선택하세요</option>
           </select>
+          <div id="barista-preset-summary" class="barista-note" hidden></div>
         </div>
-      </div>
-
-      <div class="selector-row">
-        <div class="selector-group">
-          <span class="sel-label">원두 중량(7단계):</span>
-          <div class="pill-btns" id="weight-btns-wrap">
-            <button class="p-btn" id="wbtn-0" onclick="selectWeightPreset(0)">15g</button>
-            <button class="p-btn" id="wbtn-1" onclick="selectWeightPreset(1)">20g</button>
-            <button class="p-btn" id="wbtn-2" onclick="selectWeightPreset(2)">25g</button>
-            <button class="p-btn active" id="wbtn-3" onclick="selectWeightPreset(3)">30g</button>
-            <button class="p-btn" id="wbtn-4" onclick="selectWeightPreset(4)">35g</button>
-            <button class="p-btn" id="wbtn-5" onclick="selectWeightPreset(5)">40g</button>
-            <button class="p-btn" id="wbtn-6" onclick="selectWeightPreset(6)">50g</button>
-          </div>
-        </div>
-
-        <div class="selector-group">
-          <span class="sel-label">추출 모드(4종):</span>
-          <div class="pill-btns">
-            <button class="p-btn mode-btn" id="mbtn-strong" onclick="selectBrewMode('strong')">진하게 (1:14)</button>
-            <button class="p-btn mode-btn active" id="mbtn-standard" onclick="selectBrewMode('standard')">표준 (1:16)</button>
-            <button class="p-btn mode-btn" id="mbtn-light" onclick="selectBrewMode('light')">연하게 (1:18)</button>
-            <button class="p-btn mode-btn" id="mbtn-bypass" onclick="selectBrewMode('bypass')">바이패스 (1:12+온수)</button>
-          </div>
-        </div>
-      </div>
+        <div class="wizard-selection" id="wizard-recipe-selected"></div>
+      </section>
     </div>
 
     <!-- 초슬림 KPI 카드 4개 -->
@@ -1058,7 +1187,7 @@
           <span id="ey-badge" class="badge badge-warn">측정 대기</span>
         </div>
         <div class="kpi-val" id="ey-val">실측 TDS / EY 입력 대기</div>
-        <div class="kpi-sub" id="tds-sub">미측정 상태에서는 수치를 추정하지 않습니다.</div>
+        <div class="kpi-sub" id="tds-sub">실측값과 SCA 목표 참고 범위를 구분합니다. 미측정값은 예측 숫자로 만들지 않습니다.</div>
       </div>
 
       <div class="kpi-card">
@@ -1077,7 +1206,7 @@
       <div class="panel">
         <div>
           <div class="panel-title">
-            <span>🎛️ 세팅 조절 (막대: 큰 단위 / 숫자칸: 미세 입력)</span>
+            <span>4. 세팅 조절 (막대 그래프와 ± 버튼)</span>
             <button class="lock-all-btn" id="btn-lock-all" onclick="toggleLockAll()">🔓 전체 세팅 고정하기</button>
           </div>
 
@@ -1085,7 +1214,7 @@
             <!-- 1. 원두 도징량 -->
             <div class="ctrl-box" id="box-dose">
               <div class="ctrl-top">
-                <span class="ctrl-title">1. 원두량 (g)</span>
+                <span class="ctrl-title">원두량 (g) <button class="help-mini" onclick="showInlineHelp('dose')">?</button></span>
                 <button class="lock-btn" id="lock-dose" onclick="toggleLock('dose')">🔓 고정</button>
               </div>
               <div class="num-input-row">
@@ -1094,14 +1223,14 @@
                 <span class="unit-txt">g</span>
                 <button class="step-btn" id="plus-dose" onclick="stepControl('dose', 1)">+</button>
               </div>
-              <input type="range" id="dose" class="coarse-slider" min="10" max="50" step="5" value="30" oninput="onSliderInput('dose')" />
+              <input type="range" id="dose" class="coarse-slider" min="10" max="60" step="5" value="30" oninput="onSliderInput('dose')" />
               <div class="ctrl-sub-hint"><span>막대 5g 단위</span><span id="dose-label">30g</span></div>
             </div>
 
             <!-- 2. 총 물 투입량 -->
             <div class="ctrl-box" id="box-water">
               <div class="ctrl-top">
-                <span class="ctrl-title">2. 총 물 투입량 (g)</span>
+                <span class="ctrl-title">총 물 투입량 (g) <button class="help-mini" onclick="showInlineHelp('water')">?</button></span>
                 <button class="lock-btn" id="lock-water" onclick="toggleLock('water')">🔓 고정</button>
               </div>
               <div class="num-input-row">
@@ -1110,14 +1239,14 @@
                 <span class="unit-txt">g</span>
                 <button class="step-btn" id="plus-water" onclick="stepControl('water', 5)">+</button>
               </div>
-              <input type="range" id="water" class="coarse-slider" min="140" max="900" step="20" value="480" oninput="onSliderInput('water')" />
-              <div class="ctrl-sub-hint"><span>막대 20g 단위</span><span id="water-label">480g (1:16.0)</span></div>
+              <input type="range" id="water" class="coarse-slider" min="120" max="1000" step="5" value="480" oninput="onSliderInput('water')" />
+              <div class="ctrl-sub-hint"><span>막대 5g 단위</span><span id="water-label">480g (1:16.0)</span></div>
             </div>
 
             <!-- 3. 추출수 온도 -->
             <div class="ctrl-box" id="box-temp">
               <div class="ctrl-top">
-                <span class="ctrl-title">3. 추출 수온 (°C)</span>
+                <span class="ctrl-title">추출 수온 (°C) <button class="help-mini" onclick="showInlineHelp('temp')">?</button></span>
                 <button class="lock-btn" id="lock-temp" onclick="toggleLock('temp')">🔓 고정</button>
               </div>
               <div class="num-input-row">
@@ -1126,7 +1255,7 @@
                 <span class="unit-txt">°C</span>
                 <button class="step-btn" id="plus-temp" onclick="stepControl('temp', 0.5)">+</button>
               </div>
-              <input type="range" id="temp" class="coarse-slider" min="85" max="100" step="1" value="95" oninput="onSliderInput('temp')" />
+              <input type="range" id="temp" class="coarse-slider" min="80" max="100" step="0.5" value="95" oninput="onSliderInput('temp')" />
               <div class="ctrl-sub-hint"><span id="temp-range-hint">권장 94~96°C</span><span id="temp-label">95.0°C</span></div>
             </div>
 
@@ -1142,20 +1271,19 @@
                 <span class="unit-txt">초</span>
                 <button class="step-btn" id="plus-time" onclick="stepControl('time', 5)">+</button>
               </div>
-              <input type="range" id="time" class="coarse-slider" min="90" max="300" step="15" value="210" oninput="onSliderInput('time')" />
-              <div class="ctrl-sub-hint"><span>막대 15초 단위</span><span id="time-label">3분 35초</span></div>
+              <input type="range" id="time" class="coarse-slider" min="60" max="360" step="5" value="210" oninput="onSliderInput('time')" />
+              <div class="ctrl-sub-hint"><span>막대 5초 단위</span><span id="time-label">3분 35초</span></div>
             </div>
 
-            <!-- 5. 분쇄 설정: 세 가지 방식 중 하나만 선택 -->
+            <!-- 5. 분쇄 설정: 등록 모델 또는 일반 5단계 -->
             <div class="ctrl-box grind-settings-box" id="box-grinder">
               <div class="ctrl-top">
-                <span class="ctrl-title">5. 분쇄 설정</span>
+                <span class="ctrl-title">분쇄 설정 <button class="help-mini" onclick="showInlineHelp('grind')">?</button></span>
                 <button class="lock-btn" id="lock-grinder" onclick="toggleLock('grinder')">🔓 고정</button>
               </div>
               <div class="grind-mode-options" role="radiogroup" aria-label="분쇄 설정 방식">
-                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="registered" onchange="onGrinderModeChange()"> 등록된 그라인더 모델 및 눈금</label>
-                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="general" checked onchange="onGrinderModeChange()"> 일반 분쇄도 5단계</label>
-                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="none" onchange="onGrinderModeChange()"> 분쇄 설정 안 함</label>
+                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="registered" checked onchange="onGrinderModeChange()"> 등록된 그라인더 모델 및 실제 눈금</label>
+                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="general" onchange="onGrinderModeChange()"> 일반 분쇄도 5단계 <span class="wizard-prompt">(그라인더 모델을 모를 경우)</span></label>
               </div>
 
               <div id="grinder-registered-controls" class="grind-mode-panel" hidden>
@@ -1183,12 +1311,8 @@
                 </div>
                 <div class="ctrl-sub-hint">그라인더 눈금이나 마이크론으로 환산하지 않는 정성적 분류입니다.</div>
               </div>
-
-              <div id="grinder-none-controls" class="grind-mode-panel" hidden>
-                <div class="ctrl-sub-hint">분쇄 설정 없이도 레시피 작성과 추출을 진행할 수 있습니다.</div>
               </div>
             </div>
-          </div>
 
           <!-- 실측 TDS(%) 및 실제 완성 음료 무게(g) 입력 바 -->
           <div class="measured-bar">
@@ -1201,6 +1325,9 @@
             </div>
             <span id="measured-ey-result" style="font-weight:900; color:var(--theme-dark);">TDS와 실제 음료 무게 입력 시 실측 EY 계산</span>
           </div>
+          <div class="panel-lock-footer">
+            <button class="lock-all-btn" id="btn-lock-all-bottom" onclick="toggleLockAll()">🔓 전체 세팅 고정하기</button>
+          </div>
         </div>
 
         <!-- [하단] 3D 입체 추출 시작 & 저장 버튼 (나란히 배치해 세로 높이 절약) -->
@@ -1209,7 +1336,7 @@
             ▶ 3D 추출 시작 (하단)
           </button>
           <button class="btn-3d btn-3d-gold" onclick="saveCurrentRecipe()">
-            ⭐ 세팅 저장 (+엑셀)
+            ⭐ 레시피 보관함에 저장
           </button>
         </div>
       </div>
@@ -1217,27 +1344,33 @@
       <!-- [우측 패널] 향미 밸런스 바 & 눈금/라벨이 완벽 복원된 차트 2종 -->
       <div class="panel">
         <div>
-          <div class="balance-strip">
-            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800;">
-              <span style="color:var(--sour-color);">◀ 산미 <b id="sour-pct">시음 후 평가</b></span>
-              <span style="color:var(--sweet-color);">● 단맛·밸런스 <b id="sweet-pct">시음 후 평가</b></span>
-              <span style="color:var(--bitter-color);">쓴맛·바디 <b id="bitter-pct">시음 후 평가</b> ▶</span>
-            </div>
-            <div class="meter-track">
-              <div class="meter-pointer" id="balance-pointer" style="left:50%;"></div>
-            </div>
+          <div class="panel-title">6. 추출 분석 <button class="help-mini" onclick="showInlineHelp('metrics')">?</button></div>
+          <div class="metrics-pair">
+            <div class="metric-tile"><small>SCA 목표 참고 EY 범위</small><strong>18–22%</strong></div>
+            <div class="metric-tile"><small>실측 EY</small><strong id="analysis-measured-ey">측정 필요</strong></div>
+            <div class="metric-tile"><small>SCA 목표 참고 TDS 범위</small><strong>1.15–1.35%</strong></div>
+            <div class="metric-tile"><small>실측 TDS</small><strong id="analysis-measured-tds">측정 필요</strong></div>
           </div>
-
+          <div class="balance-strip">
+            <div style="font-weight:850;font-size:12px;color:#526456;">산미 · 단맛 · 쓴맛 관능 평가 <button class="help-mini" onclick="showInlineHelp('flavor')">?</button></div>
+            <div class="flavor-inputs">
+              <div class="flavor-input"><label for="flavor-sour">산미 <output id="flavor-sour-value">미평가</output></label><input id="flavor-sour" type="range" min="0" max="5" step="0.5" value="0" oninput="updateFlavorChart()"></div>
+              <div class="flavor-input"><label for="flavor-sweet">단맛 <output id="flavor-sweet-value">미평가</output></label><input id="flavor-sweet" type="range" min="0" max="5" step="0.5" value="0" oninput="updateFlavorChart()"></div>
+              <div class="flavor-input"><label for="flavor-bitter">쓴맛 <output id="flavor-bitter-value">미평가</output></label><input id="flavor-bitter" type="range" min="0" max="5" step="0.5" value="0" oninput="updateFlavorChart()"></div>
+            </div>
+            <canvas id="flavorChart" class="chart-canvas" width="420" height="170" aria-label="산미 단맛 쓴맛 관능평가 그래프"></canvas>
+            <div class="ctrl-sub-hint">0~5점 사용자 시음 평가 · 입력 전에는 평가값을 표시하지 않습니다.</div>
+          </div>
           <div class="charts-grid">
             <div>
               <div style="font-size:11.5px; font-weight:800; margin-bottom:4px; color:#495057;">
-                ① 시간별 성분 용출 개념도(개념 곡선) & 목표 시간선
+                ② 시간별 성분 용출 개념도 및 목표 시간선 <button class="help-mini" onclick="showInlineHelp('extraction')">?</button>
               </div>
               <canvas id="timeChart" class="chart-canvas" width="420" height="210"></canvas>
             </div>
             <div>
               <div style="font-size:11.5px; font-weight:800; margin-bottom:4px; color:#495057;">
-                ② SCA 골든컵 컨트롤 차트 (EY 18~22% · TDS 1.15~1.35%)
+                ③ SCA 골든컵 컨트롤 차트 (EY 18~22% · TDS 1.15~1.35%) <button class="help-mini" onclick="showInlineHelp('sca')">?</button>
               </div>
               <canvas id="scaChart" class="chart-canvas" width="360" height="210"></canvas>
             </div>
@@ -1263,7 +1396,7 @@
 
       <div class="excel-btn-group">
         <button class="excel-btn" style="background:#fffdf5; border-color:#f59f00; color:#d9480f;" onclick="saveCurrentRecipe()">
-          ⭐ 현재 세팅 저장 (+기본엑셀 자동저장)
+          ⭐ 현재 레시피 저장
         </button>
         <button class="excel-btn backup" onclick="downloadExcelFile('backup')">
           📥 백업용 엑셀 저장 (요구 시)
@@ -1282,13 +1415,21 @@
 
   </div>
 
+  <div class="help-overlay" id="inlineHelpModal" role="dialog" aria-modal="true" aria-labelledby="inlineHelpTitle" onclick="if(event.target===this)closeInlineHelp()">
+    <div class="help-dialog">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;"><h3 id="inlineHelpTitle">기능 도움말</h3><button class="help-btn" onclick="closeInlineHelp()" aria-label="닫기">×</button></div>
+      <p id="inlineHelpText" style="color:#637468;font-size:13px;line-height:1.65;"></p>
+      <button class="btn-3d" style="margin-top:12px;width:100%;" onclick="closeInlineHelp()">확인</button>
+    </div>
+  </div>
+
   <!-- ================= 4. 3D 실사 추출 모달 (비이커 글씨 제거 & 상·하단 3D 버튼) ================= -->
   <div class="modal-overlay" id="brewModal">
     <div class="brew-modal">
       <div class="modal-header">
         <div>
           <h2 id="modal-title" style="font-size:16px; font-weight:900;">3D 라이브 브루잉</h2>
-          <div id="modal-subtitle" style="font-size:11.5px; color:#cbd5e1;">원두 30g · 물 투입량 480g</div>
+          <div id="modal-subtitle" style="font-size:11.5px; color:#cbd5e1;">원두 30g · 물 투입량 480g</div><div id="modal-equipment-note" style="font-size:10.5px;color:#f0d6a5;margin-top:3px;"></div>
         </div>
         <div style="display:flex; gap:8px;">
           <button class="btn-3d" id="btn-brew-top" style="padding:8px 14px; font-size:13px;" onclick="toggleBrewTimer()">

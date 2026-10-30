@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * coffee_recipes.js — [v1.6 / Part 1]
+ * coffee_recipes.js — [v1.65 / Part 1]
  * 드립 커피 추출 프로그램용 원두별 레시피 · 드리퍼 프로파일 · 추출 모드 및 그라인더 데이터
  * 기준일: 2026-10-30
  *
@@ -1441,7 +1441,9 @@ function getBaristaPresetWithScaling(presetId, requestedDoseGrams = null) {
   const targetDose = requestedDoseGrams ? Number(requestedDoseGrams) : preset.coffeeDose;
   const isScaled = targetDose !== preset.coffeeDose;
   const scaleFactor = targetDose / preset.coffeeDose;
-  const scaledTotalWater = Math.round(targetDose * preset.ratio);
+  // 원본 dose를 선택한 경우, 프리셋에 기록된 원본 물량을 그대로 사용합니다.
+  // 비율 반올림으로 250g이 251g으로 바뀌는 원본값 변형을 방지합니다.
+  const scaledTotalWater = isScaled ? Math.round(targetDose * preset.ratio) : preset.waterAmount;
 
   const scaledSchedule = preset.pourSchedule.map((step, idx, arr) => {
     const isLast = idx === arr.length - 1;
