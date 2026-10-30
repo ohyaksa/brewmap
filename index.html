@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BREWMAP — 3D Coffee Brewing Studio v1.652</title>
+  <title>BREWMAP — 3D Coffee Brewing Studio v1.653</title>
   <style>
     :root {
       --theme-color: #00a1e4;
@@ -921,7 +921,7 @@
     }
 
 
-    /* ================= v1.652 · Modern Sage UI ================= */
+    /* ================= v1.653 · Modern Sage UI ================= */
     :root {
       --theme-color: #78947b;
       --theme-dark: #42634a;
@@ -979,7 +979,7 @@
     .kpi-head { color:#7b897e; font-size:11px; }
     .kpi-val { white-space:normal; overflow-wrap:anywhere; font-size:16px; color:#2f4234; }
     .kpi-sub { white-space:normal; overflow-wrap:anywhere; line-height:1.4; }
-    .main-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:start; }
+    .main-grid { grid-template-columns:minmax(0,1fr); gap:14px; align-items:start; }
     .panel { padding:18px; min-width:0; overflow:hidden; gap:16px; }
     .panel-title { font-size:15px; margin-bottom:12px; flex-wrap:wrap; }
     .controls-2col-grid { gap:11px; }
@@ -1040,7 +1040,7 @@
     }
 
 
-    /* v1.652: four-step configuration, prediction display and post-brew evaluation */
+    /* v1.653: four-step configuration, prediction display and post-brew evaluation */
     .version-badge { display:inline-flex; align-items:center; margin-left:5px; padding:3px 7px; border-radius:7px; background:#e8f0e9; color:#42634a; font-size:10px; font-weight:900; letter-spacing:.02em; vertical-align:middle; }
     .top-selector-bar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:12px; }
     .wizard-step { height:100%; min-width:0; }
@@ -1070,7 +1070,7 @@
     }
 
   
-    /* v1.652 BREWMAP branding, predicted metrics, post-brew tasting and coffee-bed simulation */
+    /* v1.653 BREWMAP branding, predicted metrics, post-brew tasting and coffee-bed simulation */
     .wizard-step.is-complete { background:#eaf3eb; border-color:#8eaf95; }
     .wizard-step.is-complete .wizard-number { background:#5f8067; color:#fff; }
     .wizard-step.is-complete .wizard-title,.wizard-step.is-complete .wizard-selection { color:#294f33; font-weight:900; }
@@ -1101,6 +1101,16 @@
     .postbrew-measured-bar input { width:82px; }
     .postbrew-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
     .postbrew-actions button:first-child { flex:1 1 220px; }
+    .analysis-ordered-charts { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; min-width:0; }
+    .analysis-ordered-charts > div { min-width:0; }
+    .predicted-flavor-panel { border:1px solid #dce7df; border-radius:13px; background:#f8fbf8; padding:12px; margin:10px 0 14px; }
+    .predicted-flavor-title { color:#405547; font-size:12.5px; font-weight:900; margin-bottom:4px; }
+    .predicted-flavor-caption { color:#7a897d; font-size:10.5px; margin-bottom:6px; }
+    #predictedFlavorChart { display:block; width:100%; height:158px; max-width:100%; border:1px solid #e3eae4; border-radius:10px; background:#fff; }
+    .postbrew-flavor-history { margin-top:10px; padding:10px; border:1px solid #e1e9e2; border-radius:10px; background:#fff; }
+    .brew-start-actions { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:10px; margin-top:16px; padding-top:14px; border-top:1px solid #e3ebe4; }
+    .brew-start-actions button { min-height:46px; }
+    @media(max-width:520px) { .brew-start-actions { grid-template-columns:1fr; } }
     .tasting-save-status { margin-top:7px; font-size:11px; font-weight:800; color:#42634a; }
     @media(max-width:700px) { .metrics-pair-six { grid-template-columns:repeat(2,minmax(0,1fr)); } .postbrew-measured-bar { grid-template-columns:1fr; } }
 
@@ -1150,7 +1160,7 @@
         <div>
           <h1>
             <span id="header-barista-title">BREWMAP</span>
-            <span class="version-badge" id="app-version">v1.652</span>
+            <span class="version-badge" id="app-version">v1.653</span>
             <span id="user-role-badge" class="role-badge badge-guest">게스트</span>
           </h1>
           <div class="subtitle" id="welcome-subtitle">3D Coffee Brewing Studio · Recipe Lab · Precision Brewing</div>
@@ -1162,13 +1172,13 @@
         <button id="btn-invite-link" class="excel-btn load1" style="display:none;" onclick="createInviteLink()">
           🔗 지인 초대링크 복사
         </button>
-        <button class="btn-3d" onclick="openBrewModal()">
-          ▶ 3D 추출 시작 (상단)
+        <button class="excel-btn" type="button" onclick="document.getElementById('brew-start-actions')?.scrollIntoView({behavior:'smooth',block:'center'})">
+          ↓ 분석 확인 후 추출 시작
         </button>
       </div>
     </header>
 
-    <!-- v1.652 드리퍼 → 원두 → 레시피 → 분쇄도 4단계 선택 -->
+    <!-- v1.653 드리퍼 → 원두 → 레시피 → 분쇄도 4단계 선택 -->
     <div class="top-selector-bar" id="recipe-wizard">
       <section class="wizard-step is-current" id="wizard-step-1">
         <div class="wizard-heading"><span class="wizard-number">01</span><span class="wizard-title">드리퍼</span><span class="wizard-prompt">1. 드리퍼를 선택하세요.</span><button class="help-mini" onclick="showInlineHelp('dripper')" aria-label="드리퍼 도움말">?</button></div>
@@ -1309,10 +1319,10 @@
       </div>
     </div>
 
-    <!-- 메인 2단 그리드 -->
+    <!-- 메인 세팅 → 분석 순서형 단일 컬럼 -->
     <div class="main-grid">
-      <!-- [좌측 패널] 1줄에 2개씩 배치된 조작부 (막대 큼직하게 + 직접 숫자 입력 세밀하게 + 🔒 고정 기능) -->
-      <div class="panel">
+      <!-- 세팅 조절 패널: 분석 패널보다 먼저 표시 -->
+      <div class="panel" id="brew-settings-panel">
         <div>
           <div class="panel-title">
             <span>5. 세팅 조절 (막대 그래프와 ± 버튼)</span>
@@ -1392,18 +1402,9 @@
           </div>
         </div>
 
-        <!-- [하단] 3D 입체 추출 시작 & 저장 버튼 (나란히 배치해 세로 높이 절약) -->
-        <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:8px; margin-top:8px;">
-          <button class="btn-3d" onclick="openBrewModal()">
-            ▶ 3D 추출 시작 (하단)
-          </button>
-          <button class="btn-3d btn-3d-gold" onclick="saveCurrentRecipe()">
-            ⭐ 설정값 저장
-          </button>
-        </div>
       </div>
 
-      <!-- [우측 패널] 향미 밸런스 바 & 눈금/라벨이 완벽 복원된 차트 2종 -->
+      <!-- 추출 분석 패널: 예상 향미 → 시간별 용출 → SCA → 통계 → 추출 시작 -->
       <div class="panel">
         <div>
           <div class="panel-title">6. 추출 분석 <button class="help-mini" onclick="showInlineHelp('metrics')">?</button></div>
@@ -1416,12 +1417,12 @@
             <div class="metric-tile"><small>SCA 목표 참고 TDS</small><strong>1.15–1.35%</strong></div>
           </div>
           <div class="estimate-disclaimer">※ 예상 TDS·수율은 레시피 설정에 기반한 실험으로 보정되지 않은 화면용 휴리스틱입니다. 표시된 ± 범위도 통계적 신뢰구간이 아니며, 원두·분쇄·물 성분·추출·배수 상태에 따라 실제 측정값과 다를 수 있습니다. 정확한 확인에는 굴절계와 실제 음료 무게 측정이 필요합니다.</div>
-          <div class="balance-strip">
-            <div style="font-weight:850;font-size:12px;color:#526456;">산미 · 단맛 · 쓴맛 관능평가 <button class="help-mini" onclick="showInlineHelp('flavor')">?</button></div>
-            <div id="flavor-latest-summary" class="ctrl-sub-hint">관능평가는 추출 완료 후 입력합니다. 평가값은 추출 기록에 자동 저장됩니다.</div>
-            <canvas id="flavorChart" class="chart-canvas" width="420" height="170" aria-label="최근 산미 단맛 쓴맛 관능평가 그래프"></canvas>
+          <div class="predicted-flavor-panel">
+            <div class="predicted-flavor-title">예상 향미 경향 · 산미 / 단맛 / 쓴맛 <button class="help-mini" onclick="showInlineHelp('flavor')">?</button></div>
+            <div class="predicted-flavor-caption">현재 추출 설정을 이용한 참고용 경향 지수(0~5)입니다. 실제 관능평가를 대신하지 않습니다.</div>
+            <canvas id="predictedFlavorChart" width="760" height="158" aria-label="예상 산미 단맛 쓴맛 비교 막대 그래프"></canvas>
           </div>
-          <div class="charts-grid">
+          <div class="analysis-ordered-charts">
             <div>
               <div style="font-size:11.5px; font-weight:800; margin-bottom:4px; color:#495057;">
                 ② 시간별 성분 용출 개념도 및 목표 시간선 <button class="help-mini" onclick="showInlineHelp('extraction')">?</button>
@@ -1466,6 +1467,10 @@
             <span id="diag-desc">원두 및 드리퍼 추천 시작점입니다.</span>
           </div>
           <a id="recipe-source-link" href="https://brewster.co.kr/" target="_blank" class="source-link">🔗 원문 출처 보기</a>
+        </div>
+        <div class="brew-start-actions" id="brew-start-actions">
+          <button class="btn-3d" type="button" onclick="openBrewModal()">▶ 3D 추출 시작</button>
+          <button class="btn-3d btn-3d-gold" type="button" onclick="saveCurrentRecipe()">⭐ 설정값 저장</button>
         </div>
       </div>
     </div>
@@ -1525,7 +1530,7 @@
       </div>
 
       <div class="modal-body">
-        <!-- 좌측: 3D 추출 캔버스 (드리퍼·비이커 위 글씨 완전 제거, 상단 HUD + 하단 저울 LED만 깔끔하게 표시) -->
+        <!-- 3D 추출 캔버스: 중앙 대기 카운트다운, 좌측 물량, 우측 타이머 표시 -->
         <div class="anim-stage-box">
           <canvas id="brewAnimCanvas" width="388" height="440"></canvas>
         </div>
@@ -1562,6 +1567,11 @@
               <div class="flavor-input"><label for="flavor-sour">산미 <output id="flavor-sour-value">미평가</output></label><input id="flavor-sour" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('sour')"></div>
               <div class="flavor-input"><label for="flavor-sweet">단맛 <output id="flavor-sweet-value">미평가</output></label><input id="flavor-sweet" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('sweet')"></div>
               <div class="flavor-input"><label for="flavor-bitter">쓴맛 <output id="flavor-bitter-value">미평가</output></label><input id="flavor-bitter" type="range" min="0" max="5" step="0.5" value="2.5" data-rated="false" oninput="setFlavorRatingTouched('bitter')"></div>
+            </div>
+            <div class="postbrew-flavor-history">
+              <div style="font-weight:850;font-size:12px;color:#526456;">입력한 관능평가 그래프</div>
+              <div id="flavor-latest-summary" class="ctrl-sub-hint">산미·단맛·쓴맛 평가를 입력하면 여기에 표시됩니다.</div>
+              <canvas id="flavorChart" class="chart-canvas" width="420" height="170" aria-label="실제 시음 후 산미 단맛 쓴맛 관능평가 그래프"></canvas>
             </div>
             <div class="measured-bar postbrew-measured-bar">
               <strong>🔬 실제 측정값 (선택)</strong>

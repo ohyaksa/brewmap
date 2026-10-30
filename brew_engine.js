@@ -872,6 +872,53 @@ function getEstimatedBrewMetrics(doseArg, waterArg, timeArg) {
   return { ey, tds, eyMargin: 1.8, tdsMargin: 0.15, assumedBeverageMass };
 }
 
+function getEstimatedFlavorProfile(doseArg, waterArg, timeArg) {
+  const dose = Math.max(1, Number(doseArg) || 30);
+  const water = Math.max(1, Number(waterArg) || 480);
+  const time = Math.max(1, Number(timeArg) || 210);
+  const temp = Number(document.getElementById("temp-num")?.value) || 95;
+  const ratio = water / dose;
+  const grindMode = getSelectedGrinderMode();
+  const grindLevel = getSelectedGeneralGrindLevel();
+  const grindOffset = grindMode === "general" ? (grindLevel - 3) * 0.22 : 0;
+  // 검증된 관능 예측 모델이 아닌 화면용 참고 지수입니다. 실제 맛 점수로 해석하지 않습니다.
+  const extractionIndex = Math.max(-1, Math.min(1,
+    (16 - ratio) * 0.055 + (temp - 93) * 0.035 + (time - 180) * 0.0025 + grindOffset * 0.32
+  ));
+  const sour = Math.max(0.5, Math.min(4.8, 3.0 - extractionIndex * 0.48));
+  const sweet = Math.max(0.5, Math.min(4.8, 3.0 + (1 - Math.abs(extractionIndex)) * 0.28));
+  const bitter = Math.max(0.5, Math.min(4.8, 2.45 + Math.max(0, extractionIndex) * 0.62));
+  return { sour, sweet, bitter };
+}
+
+function drawPredictedFlavorChart(profile) {
+  const canvas = document.getElementById("predictedFlavorChart");
+  if (!canvas || !profile) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  const rows = [
+    { label: "산미", value: profile.sour, color: "#d69a49" },
+    { label: "단맛", value: profile.sweet, color: "#659a73" },
+    { label: "쓴맛", value: profile.bitter, color: "#7588a8" }
+  ];
+  const left = 88, right = 74, top = 14, rowH = 44, barH = 17;
+  const barW = W - left - right;
+  ctx.font = "bold 15px sans-serif"; ctx.textBaseline = "middle";
+  rows.forEach((row, i) => {
+    const y = top + i * rowH;
+    ctx.fillStyle = "#405547"; ctx.textAlign = "right"; ctx.fillText(row.label, left - 14, y + barH / 2);
+    ctx.fillStyle = "#edf2ed"; ctx.beginPath(); ctx.roundRect(left, y, barW, barH, 8); ctx.fill();
+    const width = Math.max(0, Math.min(5, row.value)) / 5 * barW;
+    ctx.fillStyle = row.color; ctx.beginPath(); ctx.roundRect(left, y, width, barH, 8); ctx.fill();
+    ctx.fillStyle = "#526456"; ctx.textAlign = "left"; ctx.font = "bold 13px sans-serif";
+    ctx.fillText(`${row.value.toFixed(1)} / 5`, left + barW + 10, y + barH / 2);
+  });
+  ctx.font = "10px sans-serif"; ctx.fillStyle = "#8a978c"; ctx.textAlign = "right";
+  ctx.fillText("참고용 추정 지수", W - 12, H - 7);
+}
+
 function updateDial() {
   const d = (window.DRIPPERS || {})[currentDripper] || { themeColor: "#00a1e4", themeDark: "#0077ac" };
   const dose = parseFloat(document.getElementById("dose-num").value) || 30;
@@ -912,6 +959,7 @@ function updateDial() {
 
   // 레시피 설정에 근거한 참고용 예상값과 실측값을 분리해 표시합니다.
   const estimated = getEstimatedBrewMetrics(dose, water, time);
+  drawPredictedFlavorChart(getEstimatedFlavorProfile(dose, water, time));
   const estimatedEyEl = document.getElementById("analysis-estimated-ey");
   const estimatedTdsEl = document.getElementById("analysis-estimated-tds");
   if (estimatedEyEl) estimatedEyEl.textContent = `약 ${estimated.ey.toFixed(1)}% (±${estimated.eyMargin.toFixed(1)})`;
@@ -2568,20 +2616,44 @@ function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, 
     ctx.restore();
   }
 
-  // Digital scale display
-  const scaleY = 376, scaleW = 330, scaleH = 56, scaleX = cx - scaleW / 2;
-  ctx.save();
-  const scaleGrad = ctx.createLinearGradient(0, scaleY, 0, scaleY + scaleH);
-  scaleGrad.addColorStop(0, "#222b32"); scaleGrad.addColorStop(1, "#070b0e");
-  ctx.fillStyle = scaleGrad; ctx.strokeStyle = pouring ? "#4fc3e5" : waiting ? "#c18a42" : "#52636a"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(scaleX, scaleY, scaleW, scaleH, 11); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#030608"; ctx.strokeStyle = "#1c6a89"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.roundRect(scaleX + 10, scaleY + 7, 140, 42, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#80d7ec"; ctx.font = "800 9px sans-serif"; ctx.textAlign = "left"; ctx.fillText("TIME", scaleX + 18, scaleY + 19);
-  ctx.fillStyle = elapsed < 0 ? "#ff9c9c" : "#49d5df"; ctx.font = "900 19px monospace"; ctx.fillText(formatMMSS(elapsed), scaleX + 18, scaleY + 41);
-  ctx.fillStyle = "#030608"; ctx.strokeStyle = "#287e4a";
-  ctx.beginPath(); ctx.roundRect(scaleX + scaleW - 150, scaleY + 7, 140, 42, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#9ce4bc"; ctx.font = "800 9px sans-serif"; ctx.textAlign = "right"; ctx.fillText(pouring ? "POURING" : "WATER INPUT", scaleX + scaleW - 18, scaleY + 19);
-  ctx.fillStyle = "#ffd43b"; ctx.font = "900 19px monospace"; ctx.fillText(`${Math.round(currentWater)} g`, scaleX + scaleW - 18, scaleY + 41);
-  ctx.restore();
+  // Waiting countdown centered in the server/beaker.
+  if (waiting) {
+    let waitRemainSec = 0;
+    const activeWaitStage = Array.isArray(pourStages) ? pourStages.find(stage =>
+      elapsed >= Number(stage.pourEndSec || 0) && elapsed < Number(stage.endSec || 0)
+    ) : null;
+    if (activeWaitStage) waitRemainSec = Math.max(0, Math.ceil(Number(activeWaitStage.endSec) - elapsed));
+    const waitW = 132, waitH = 48, waitX = cx - waitW / 2, waitY = 303;
+    ctx.save();
+    ctx.fillStyle = "rgba(5,13,20,.82)"; ctx.strokeStyle = "rgba(214,168,90,.95)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(waitX, waitY, waitW, waitH, 9); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#f0c982"; ctx.font = "800 9px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("물을 붓고 기다리는 시간", cx, waitY + 13);
+    ctx.fillStyle = "#fff2d5"; ctx.font = "900 20px monospace";
+    ctx.fillText(formatMMSS(waitRemainSec), cx, waitY + 37);
+    ctx.restore();
+  }
+
+  // Left: current / target water. Right: elapsed / target time.
+  const meterY = 372, meterH = 60, meterGap = 10, meterX = 12;
+  const meterW = (W - meterX * 2 - meterGap) / 2;
+  const totalWater = Math.max(1, Number(document.getElementById("water-num")?.value) || water);
+  const totalTime = Math.max(1, Number(document.getElementById("time-num")?.value) || 210);
+  const drawMeter = (x, stroke, label, primary, secondary, primaryColor) => {
+    ctx.save();
+    const grad = ctx.createLinearGradient(0, meterY, 0, meterY + meterH);
+    grad.addColorStop(0, "#222b32"); grad.addColorStop(1, "#070b0e");
+    ctx.fillStyle = grad; ctx.strokeStyle = stroke; ctx.lineWidth = 1.7;
+    ctx.beginPath(); ctx.roundRect(x, meterY, meterW, meterH, 9); ctx.fill(); ctx.stroke();
+    ctx.textAlign = "left"; ctx.fillStyle = stroke; ctx.font = "800 9px sans-serif";
+    ctx.fillText(label, x + 10, meterY + 13);
+    ctx.fillStyle = primaryColor; ctx.font = "900 17px monospace";
+    ctx.fillText(primary, x + 10, meterY + 34);
+    ctx.fillStyle = "#c4d0d6"; ctx.font = "700 8.5px sans-serif";
+    ctx.fillText(secondary, x + 10, meterY + 50);
+    ctx.restore();
+  };
+  drawMeter(meterX, pouring ? "#55c5ee" : "#3289bd", "현재 물 투입량", `${Math.round(currentWater)} g`, `총 목표 ${Math.round(totalWater)} g`, "#70d8f5");
+  const elapsedDisplay = Math.max(0, elapsed);
+  drawMeter(meterX + meterW + meterGap, waiting ? "#d6a85a" : "#419c68", "경과 시간", formatMMSS(elapsedDisplay), `총 목표 ${formatMMSS(totalTime)}`, "#9ce4bc");
 }
