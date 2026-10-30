@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오찬욱 바리스타 3D 브루잉 다이얼러 v1.6</title>
+  <style>
+    :root {
+      --theme-color: #00a1e4;
+      --theme-dark: #0077ac;
+      --theme-soft: #e7f5ff;
+      --bg-color: #f1f3f5;
+      --card-bg: #ffffff;
+      --text-main: #212529;
+      --text-sub: #6c757d;
+      --sour-color: #f59f00;
+      --sweet-color: #37b24d;
+      --bitter-color: #7950f2;
+      --border-color: #dee2e6;
+      --lock-color: #e03131;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 10px 14px;
+      line-height: 1.35;
+      font-size: 13px;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: none;
+    }
+
+    /* ================= 3D 입체 버튼 스타일 ================= */
+    .btn-3d {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 18px;
+      font-size: 13.5px;
+      font-weight: 900;
+      color: #ffffff;
+      background: linear-gradient(180deg, #22b8cf 0%, var(--theme-color) 45%, var(--theme-dark) 100%);
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow:
+        0 4px 0 #004e75,
+        0 6px 12px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .btn-3d:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .btn-3d:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #004e75, 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-3d-gold {
+      background: linear-gradient(180deg, #ffd43b 0%, #f59f00 50%, #d9480f 100%);
+      box-shadow:
+        0 4px 0 #9c360b,
+        0 6px 12px rgba(217, 72, 15, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    .btn-3d-gold:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #9c360b;
+    }
+
+    .btn-3d-dark {
+      background: linear-gradient(180deg, #495057 0%, #343a40 50%, #212529 100%);
+      box-shadow:
+        0 4px 0 #0b0d0e,
+        0 6px 12px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+
+    .btn-3d-dark:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #0b0d0e;
+    }
+
+    /* ================= 첫 화면 입장(Auth) 모달 ================= */
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 16px;
+    }
+
+    .auth-box {
+      background: #ffffff;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 20px;
+      padding: 26px 22px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .auth-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #00a1e4, #0077ac);
+      color: #fff;
+      font-size: 24px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px auto;
+    }
+
+    .auth-box h2 {
+      font-size: 20px;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    .auth-box p {
+      font-size: 12.5px;
+      color: #6c757d;
+      margin-bottom: 16px;
+    }
+
+    .welcome-guest-banner {
+      background: #e7f5ff;
+      border: 2px solid #00a1e4;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .welcome-guest-name {
+      font-size: 17px;
+      font-weight: 900;
+      color: #0077ac;
+      margin-bottom: 4px;
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      border: 2px solid #dee2e6;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 10px;
+      outline: none;
+    }
+
+    .auth-input:focus {
+      border-color: var(--theme-color);
+    }
+
+    .auth-divider {
+      margin: 14px 0;
+      border-top: 1px dashed #dee2e6;
+    }
+
+    /* ================= 컴팩트 상단 헤더 ================= */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 8px;
+      padding: 10px 14px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-badge {
+      width: 36px;
+      height: 36px;
+      background-color: var(--theme-color);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    h1 {
+      font-size: 16.5px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .subtitle {
+      font-size: 11.5px;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    .role-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .badge-master { background: #212529; color: #ffd43b; }
+    .badge-guest { background: var(--theme-soft); color: var(--theme-dark); }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ================= 통합 상단 선택 바 (드리퍼 · 원두 · 중량 · 모드 · 프리셋) ================= */
+    .top-selector-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .selector-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .selector-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .sel-label {
+      font-size: 12px;
+      font-weight: 900;
+      color: #495057;
+      white-space: nowrap;
+    }
+
+    /* 드리퍼 1줄 컴팩트 탭 */
+    .dripper-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dripper-tab {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border-color);
+      background: #f8f9fa;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+
+    .dripper-tab.active {
+      border-color: var(--theme-color);
+      background: var(--theme-soft);
+      color: var(--theme-dark);
+    }
+
+    .compact-select {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1.5px solid var(--theme-color);
+      background: #fff;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--text-main);
+      outline: none;
+      max-width: 290px;
+    }
+
+    /* 중량 7단계 & 모드 4종 버튼 */
+    .pill-btns {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .p-btn {
+      padding: 5px 10px;
+      border-radius: 7px;
+      border: 1px solid #ced4da;
+      background: #f8f9fa;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .p-btn.active {
+      background: var(--theme-color);
+      color: #fff;
+      border-color: var(--theme-color);
+    }
+
+    .mode-btn.active {
+      background: #212529;
+      color: #ffd43b;
+      border-color: #212529;
+    }
+
+    /* ================= 초슬림 4열 KPI 요약 바 ================= */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .kpi-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-sub);
+      font-weight: 800;
+      margin-bottom: 2px;
+    }
+
+    .kpi-val {
+      font-size: 16.5px;
+      font-weight: 900;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .kpi-sub {
+      font-size: 10.5px;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge {
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .badge-good { background: #d3f9d8; color: #2b8a3e; }
+    .badge-warn { background: #fff3bf; color: #e67700; }
+    .badge-bad  { background: #ffe3e3; color: #c92a2a; }
+    .badge-info { background: #e7f5ff; color: #0077ac; }
+
+    /* ================= 메인 2단 대시보드 (좌: 1줄 2개 조작창 / 우: 차트 2종) ================= */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 520px 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-size: 13.5px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* 전체 잠금 버튼 */
+    .lock-all-btn {
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      border: 1.5px solid #ced4da;
+      background: #f8f9fa;
+      color: #495057;
+      transition: all 0.15s;
+    }
+
+    .lock-all-btn.locked {
+      background: #ffe3e3;
+      border-color: var(--lock-color);
+      color: var(--lock-color);
+    }
+
+    /* 1줄에 2개씩 배치하는 컨트롤 그리드 */
+    .controls-2col-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ctrl-box {
+      background: #f8f9fa;
+      border: 1.5px solid #e9ecef;
+      border-radius: 10px;
+      padding: 8px 10px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .ctrl-box.is-locked {
+      border-color: #ffa8a8;
+      background: #fff5f5;
+    }
+
+    .grind-settings-box { grid-column: 1 / -1; }
+    .grind-mode-options, .general-grind-options {
+      display: grid;
+      gap: 8px;
+      margin: 6px 0 10px;
+    }
+    .grind-mode-option, .general-grind-options label {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 34px;
+      padding: 5px 7px;
+      border-radius: 8px;
+      color: #212529;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .grind-mode-option input, .general-grind-options input {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--theme-dark);
+      flex: 0 0 auto;
+    }
+    .grind-mode-panel[hidden] { display: none !important; }
+    .grind-mode-panel {
+      border-top: 1px solid #dee2e6;
+      padding-top: 8px;
+      margin-top: 4px;
+    }
+    .grind-mode-options input:disabled, .general-grind-options input:disabled { opacity: .55; }
+
+    .ctrl-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    .ctrl-title {
+      font-size: 12px;
+      font-weight: 900;
+      color: #343a40;
+    }
+
+    .lock-btn {
+      border: 1px solid #ced4da;
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 10.5px;
+      font-weight: 800;
+      cursor: pointer;
+      color: #495057;
+    }
+
+    .lock-btn.locked {
+      background: var(--lock-color);
+      border-color: var(--lock-color);
+      color: #ffffff;
+    }
+
+    /* 직접 숫자 입력 + 미세 증감 버튼 행 */
+    .num-input-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 5px;
+    }
+
+    .step-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid #ced4da;
+      background: #fff;
+      font-weight: 900;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .step-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .direct-num-input {
+      flex: 1;
+      width: 60px;
+      height: 26px;
+      text-align: center;
+      font-size: 13.5px;
+      font-weight: 900;
+      color: var(--theme-dark);
+      border: 1.5px solid #adb5bd;
+      border-radius: 6px;
+      background: #fff;
+      outline: none;
+    }
+
+    .direct-num-input:focus {
+      border-color: var(--theme-color);
+    }
+
+    .direct-num-input:disabled {
+      background: #f1f3f5;
+      color: #868e96;
+    }
+
+    .unit-txt {
+      font-size: 11px;
+      font-weight: 800;
+      color: #495057;
+    }
+
+    /* 큼직한 단위 슬라이더 막대 */
+    input[type="range"].coarse-slider {
+      width: 100%;
+      accent-color: var(--theme-color);
+      height: 6px;
+      cursor: pointer;
+      margin: 2px 0;
+    }
+
+    input[type="range"].coarse-slider:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .ctrl-sub-hint {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    /* 실측 TDS & 음료 무게 입력 바 (선택 사항) */
+    .measured-bar {
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: #f1f3f5;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+    }
+
+    .mini-input {
+      width: 56px;
+      padding: 3px 5px;
+      border: 1px solid #ced4da;
+      border-radius: 5px;
+      font-size: 11.5px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    /* 우측 패널: 향미 바 & 차트 2종 */
+    .balance-strip {
+      padding: 7px 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    .meter-track {
+      position: relative;
+      height: 8px;
+      border-radius: 4px;
+      background: linear-gradient(90deg, #f59f00 0%, #37b24d 50%, #7950f2 100%);
+      margin: 5px 0;
+    }
+
+    .meter-pointer {
+      position: absolute;
+      top: -4px;
+      width: 12px;
+      height: 16px;
+      background: #212529;
+      border: 2px solid #fff;
+      border-radius: 5px;
+      transform: translateX(-50%);
+      transition: left 0.2s;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 10px;
+    }
+
+    canvas.chart-canvas {
+      width: 100%;
+      height: 210px;
+      background: #ffffff;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+      display: block;
+    }
+
+    .diagnosis-bar {
+      margin-top: 8px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: var(--theme-soft);
+      border-left: 4px solid var(--theme-color);
+      font-size: 11.5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .source-link {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--theme-dark);
+      text-decoration: underline;
+    }
+
+    /* ================= 접이식 레시피 보관함 (스크롤 방지) ================= */
+    details.recipe-board {
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 1.5px solid var(--theme-color);
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
+
+    details.recipe-board summary {
+      font-size: 13.5px;
+      font-weight: 900;
+      color: var(--theme-dark);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      list-style: none;
+    }
+
+    .excel-btn-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .excel-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 800;
+      cursor: pointer;
+      border: 1px solid #ced4da;
+      background: #f8f9fa;
+    }
+
+    .excel-btn.backup { background: #ebfbee; border-color: #40c057; color: #2b8a3e; }
+    .excel-btn.load1  { background: #e7f5ff; border-color: #339af0; color: #1864ab; }
+    .excel-btn.load2  { background: #fff4e6; border-color: #fd7e14; color: #d9480f; }
+
+    .recipe-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .recipe-card {
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 9px 11px;
+      background: #f8f9fa;
+      font-size: 11.5px;
+    }
+
+    /* ================= 3D 라이브 브루잉 모달 ================= */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 15, 28, 0.85);
+      backdrop-filter: blur(5px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 10px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .brew-modal {
+      background: #ffffff;
+      width: 100%;
+      max-width: 920px;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      max-height: 96vh;
+    }
+
+    .modal-header {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .modal-body {
+      padding: 14px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .anim-stage-box {
+      background: #0b0f19;
+      border-radius: 14px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 2px solid #2b303c;
+    }
+
+    #brewAnimCanvas {
+      width: 100%;
+      max-width: 388px;
+      height: 440px;
+      border-radius: 10px;
+      display: block;
+    }
+
+    .brew-info-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .stage-alert-banner {
+      background: var(--theme-soft);
+      border: 2px solid var(--theme-color);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .stage-alert-banner.pouring-mode {
+      background: linear-gradient(135deg, #e3fafc 0%, #c5f6fa 100%);
+      border: 2px solid #00a1e4;
+    }
+
+    .stage-alert-banner.waiting-mode {
+      background: linear-gradient(135deg, #fff9db 0%, #ffec99 100%);
+      border: 2px solid #f59f00;
+    }
+
+    .stage-banner-title {
+      font-size: 15px;
+      font-weight: 900;
+      color: var(--theme-dark);
+      margin-bottom: 2px;
+    }
+
+    .stage-banner-desc {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .schedule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .schedule-item {
+      display: grid;
+      grid-template-columns: 92px 1fr 115px;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: #fff;
+      font-size: 12px;
+    }
+
+    .schedule-item.active-pouring {
+      border: 2px solid #00a1e4;
+      background: #e3fafc;
+      font-weight: 900;
+    }
+
+    .schedule-item.active-waiting {
+      border: 2px solid #f59f00;
+      background: #fff9db;
+      font-weight: 900;
+    }
+
+    .schedule-item.done {
+      opacity: 0.5;
+      background: #f1f3f5;
+    }
+
+    .modal-bottom-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 1024px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .main-grid { grid-template-columns: 1fr; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .modal-body { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .controls-2col-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================= 1. 첫 화면 입장(Auth) 모달 ================= -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-box">
+      <div class="auth-logo">☕</div>
+      <h2>오찬욱 바리스타 브루잉 다이얼러</h2>
+      <p>원두·드리퍼·그라인더 맞춤 세팅 & 3D 추출 가이드</p>
+
+      <div class="welcome-guest-banner" id="url-guest-banner">
+        <div class="welcome-guest-name" id="url-guest-title">환영합니다!</div>
+        <div style="font-size:12px; color:#495057; margin-bottom:10px;">개별 초대 링크로 연결되었습니다.</div>
+        <button class="btn-3d" style="width:100%;" onclick="enterWithUrlName()">☕ 바로 입장하기</button>
+      </div>
+
+      <div id="manual-guest-zone">
+        <input type="text" id="guest-name-input" class="auth-input" placeholder="방문자 성함을 입력해 주세요" />
+        <button class="btn-3d" style="width:100%;" onclick="loginGuestManual()">☕ 지인 모드로 입장</button>
+      </div>
+
+      <div class="auth-divider"></div>
+
+      <div>
+        <button class="btn-3d btn-3d-dark" id="btn-show-master" style="width:100%; font-size:13px;" onclick="showMasterInput()">
+          👑 마스터(오찬욱 바리스타) 입장
+        </button>
+        <div id="master-code-zone" style="display:none; margin-top:8px;">
+          <input type="password" id="master-code-input" class="auth-input" placeholder="마스터 입장 코드를 입력하세요" maxlength="8" autocomplete="off" />
+          <button class="btn-3d btn-3d-gold" style="width:100%;" onclick="loginMaster()">👑 마스터 승인 및 입장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. 메인 앱 대시보드 (스크롤 최소화 한 화면 구성) ================= -->
+  <div class="container" id="mainContainer">
+
+    <!-- 컴팩트 헤더 + [상단] 3D 입체 추출 시작 버튼 -->
+    <header>
+      <div class="title-group">
+        <div class="logo-badge" id="logo-badge">B</div>
+        <div>
+          <h1>
+            <span id="header-barista-title">오찬욱 바리스타 다이얼러</span>
+            <span id="user-role-badge" class="role-badge badge-guest">게스트</span>
+          </h1>
+          <div class="subtitle" id="welcome-subtitle">표준 비율 1:16 · 모든 수치는 추천 시작점입니다.</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-invite-link" class="excel-btn load1" style="display:none;" onclick="createInviteLink()">
+          🔗 지인 초대링크 복사
+        </button>
+        <button class="btn-3d" onclick="openBrewModal()">
+          ▶ 3D 추출 시작 (상단)
+        </button>
+      </div>
+    </header>
+
+    <!-- 상단 통합 선택 바 (1행: 드리퍼 3종 탭 + 원두 24종 + 전문 프리셋 / 2행: 중량 7단계 + 추출 모드 4종) -->
+    <div class="top-selector-bar">
+      <div class="selector-row">
+        <div class="selector-group">
+          <span class="sel-label">드리퍼:</span>
+          <div class="dripper-tabs">
+            <button class="dripper-tab active" id="card-bluebottle" onclick="selectDripper('bluebottle')">🔵 블루보틀</button>
+            <button class="dripper-tab" id="card-hario" onclick="selectDripper('hario')">🔺 하리오 V60</button>
+            <button class="dripper-tab" id="card-kalita" onclick="selectDripper('kalita')">🌊 칼리타 웨이브</button>
+          </div>
+        </div>
+
+        <div class="selector-group">
+          <span class="sel-label">원두(24종):</span>
+          <select id="origin-select" class="compact-select" onchange="onOriginChange()"></select>
+        </div>
+
+        <div class="selector-group">
+          <span class="sel-label">레시피 기준:</span>
+          <select id="preset-select" class="compact-select" onchange="onPresetSelectChange()">
+            <option value="common_mode">공통 4모드 (1:14 / 1:16 / 1:18 / 바이패스)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="selector-row">
+        <div class="selector-group">
+          <span class="sel-label">원두 중량(7단계):</span>
+          <div class="pill-btns" id="weight-btns-wrap">
+            <button class="p-btn" id="wbtn-0" onclick="selectWeightPreset(0)">15g</button>
+            <button class="p-btn" id="wbtn-1" onclick="selectWeightPreset(1)">20g</button>
+            <button class="p-btn" id="wbtn-2" onclick="selectWeightPreset(2)">25g</button>
+            <button class="p-btn active" id="wbtn-3" onclick="selectWeightPreset(3)">30g</button>
+            <button class="p-btn" id="wbtn-4" onclick="selectWeightPreset(4)">35g</button>
+            <button class="p-btn" id="wbtn-5" onclick="selectWeightPreset(5)">40g</button>
+            <button class="p-btn" id="wbtn-6" onclick="selectWeightPreset(6)">50g</button>
+          </div>
+        </div>
+
+        <div class="selector-group">
+          <span class="sel-label">추출 모드(4종):</span>
+          <div class="pill-btns">
+            <button class="p-btn mode-btn" id="mbtn-strong" onclick="selectBrewMode('strong')">진하게 (1:14)</button>
+            <button class="p-btn mode-btn active" id="mbtn-standard" onclick="selectBrewMode('standard')">표준 (1:16)</button>
+            <button class="p-btn mode-btn" id="mbtn-light" onclick="selectBrewMode('light')">연하게 (1:18)</button>
+            <button class="p-btn mode-btn" id="mbtn-bypass" onclick="selectBrewMode('bypass')">바이패스 (1:12+온수)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 초슬림 KPI 카드 4개 -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-head">
+          <span>물 투입량 (완성 음료량 아님)</span>
+          <span id="kpi-water-badge" class="badge badge-info">표준 1:16</span>
+        </div>
+        <div class="kpi-val" id="kpi-water-val">480g 투입</div>
+        <div class="kpi-sub" id="kpi-water-sub">드리퍼 480g 투입 (원두 흡수분 제외 전)</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-head">
+          <span>분쇄 설정 상태</span>
+          <span id="kpi-grinder-badge" class="badge badge-info">기본 설정</span>
+        </div>
+        <div class="kpi-val" id="kpi-grinder-val">일반 분쇄도 3단계</div>
+        <div class="kpi-sub" id="kpi-grinder-sub">중간 · 필요하면 모델별 실제 눈금 설정 가능</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-head">
+          <span>수율(EY) · 농도(TDS) 구분</span>
+          <span id="ey-badge" class="badge badge-warn">측정 대기</span>
+        </div>
+        <div class="kpi-val" id="ey-val">실측 TDS / EY 입력 대기</div>
+        <div class="kpi-sub" id="tds-sub">미측정 상태에서는 수치를 추정하지 않습니다.</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-head">
+          <span>향미 경향 & 음성 안내</span>
+          <span id="flavor-badge" class="badge badge-info">시음 평가</span>
+        </div>
+        <div class="kpi-val" id="flavor-val">실제 시음 후 기록</div>
+        <div class="kpi-sub" id="voice-tier-sub">향미는 분쇄도만으로 예측하지 않습니다.</div>
+      </div>
+    </div>
+
+    <!-- 메인 2단 그리드 -->
+    <div class="main-grid">
+      <!-- [좌측 패널] 1줄에 2개씩 배치된 조작부 (막대 큼직하게 + 직접 숫자 입력 세밀하게 + 🔒 고정 기능) -->
+      <div class="panel">
+        <div>
+          <div class="panel-title">
+            <span>🎛️ 세팅 조절 (막대: 큰 단위 / 숫자칸: 미세 입력)</span>
+            <button class="lock-all-btn" id="btn-lock-all" onclick="toggleLockAll()">🔓 전체 세팅 고정하기</button>
+          </div>
+
+          <div class="controls-2col-grid">
+            <!-- 1. 원두 도징량 -->
+            <div class="ctrl-box" id="box-dose">
+              <div class="ctrl-top">
+                <span class="ctrl-title">1. 원두량 (g)</span>
+                <button class="lock-btn" id="lock-dose" onclick="toggleLock('dose')">🔓 고정</button>
+              </div>
+              <div class="num-input-row">
+                <button class="step-btn" id="minus-dose" onclick="stepControl('dose', -1)">-</button>
+                <input type="number" id="dose-num" class="direct-num-input" min="10" max="60" step="0.5" value="30" onchange="onDirectInput('dose')" />
+                <span class="unit-txt">g</span>
+                <button class="step-btn" id="plus-dose" onclick="stepControl('dose', 1)">+</button>
+              </div>
+              <input type="range" id="dose" class="coarse-slider" min="10" max="50" step="5" value="30" oninput="onSliderInput('dose')" />
+              <div class="ctrl-sub-hint"><span>막대 5g 단위</span><span id="dose-label">30g</span></div>
+            </div>
+
+            <!-- 2. 총 물 투입량 -->
+            <div class="ctrl-box" id="box-water">
+              <div class="ctrl-top">
+                <span class="ctrl-title">2. 총 물 투입량 (g)</span>
+                <button class="lock-btn" id="lock-water" onclick="toggleLock('water')">🔓 고정</button>
+              </div>
+              <div class="num-input-row">
+                <button class="step-btn" id="minus-water" onclick="stepControl('water', -5)">-</button>
+                <input type="number" id="water-num" class="direct-num-input" min="120" max="1000" step="1" value="480" onchange="onDirectInput('water')" />
+                <span class="unit-txt">g</span>
+                <button class="step-btn" id="plus-water" onclick="stepControl('water', 5)">+</button>
+              </div>
+              <input type="range" id="water" class="coarse-slider" min="140" max="900" step="20" value="480" oninput="onSliderInput('water')" />
+              <div class="ctrl-sub-hint"><span>막대 20g 단위</span><span id="water-label">480g (1:16.0)</span></div>
+            </div>
+
+            <!-- 3. 추출수 온도 -->
+            <div class="ctrl-box" id="box-temp">
+              <div class="ctrl-top">
+                <span class="ctrl-title">3. 추출 수온 (°C)</span>
+                <button class="lock-btn" id="lock-temp" onclick="toggleLock('temp')">🔓 고정</button>
+              </div>
+              <div class="num-input-row">
+                <button class="step-btn" id="minus-temp" onclick="stepControl('temp', -0.5)">-</button>
+                <input type="number" id="temp-num" class="direct-num-input" min="80" max="100" step="0.1" value="95.0" onchange="onDirectInput('temp')" />
+                <span class="unit-txt">°C</span>
+                <button class="step-btn" id="plus-temp" onclick="stepControl('temp', 0.5)">+</button>
+              </div>
+              <input type="range" id="temp" class="coarse-slider" min="85" max="100" step="1" value="95" oninput="onSliderInput('temp')" />
+              <div class="ctrl-sub-hint"><span id="temp-range-hint">권장 94~96°C</span><span id="temp-label">95.0°C</span></div>
+            </div>
+
+            <!-- 4. 목표 추출 시간 -->
+            <div class="ctrl-box" id="box-time">
+              <div class="ctrl-top">
+                <span class="ctrl-title">4. 목표 시간 (초)</span>
+                <button class="lock-btn" id="lock-time" onclick="toggleLock('time')">🔓 고정</button>
+              </div>
+              <div class="num-input-row">
+                <button class="step-btn" id="minus-time" onclick="stepControl('time', -5)">-</button>
+                <input type="number" id="time-num" class="direct-num-input" min="60" max="360" step="1" value="215" onchange="onDirectInput('time')" />
+                <span class="unit-txt">초</span>
+                <button class="step-btn" id="plus-time" onclick="stepControl('time', 5)">+</button>
+              </div>
+              <input type="range" id="time" class="coarse-slider" min="90" max="300" step="15" value="210" oninput="onSliderInput('time')" />
+              <div class="ctrl-sub-hint"><span>막대 15초 단위</span><span id="time-label">3분 35초</span></div>
+            </div>
+
+            <!-- 5. 분쇄 설정: 세 가지 방식 중 하나만 선택 -->
+            <div class="ctrl-box grind-settings-box" id="box-grinder">
+              <div class="ctrl-top">
+                <span class="ctrl-title">5. 분쇄 설정</span>
+                <button class="lock-btn" id="lock-grinder" onclick="toggleLock('grinder')">🔓 고정</button>
+              </div>
+              <div class="grind-mode-options" role="radiogroup" aria-label="분쇄 설정 방식">
+                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="registered" onchange="onGrinderModeChange()"> 등록된 그라인더 모델 및 눈금</label>
+                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="general" checked onchange="onGrinderModeChange()"> 일반 분쇄도 5단계</label>
+                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="none" onchange="onGrinderModeChange()"> 분쇄 설정 안 함</label>
+              </div>
+
+              <div id="grinder-registered-controls" class="grind-mode-panel" hidden>
+                <div class="ctrl-sub-hint" style="margin:0 0 6px;">사용자 기준 예시: Feima 600N 4.5 · Baratza Encore 14</div>
+                <select id="grinder-select" class="compact-select" style="width:100%; margin-bottom:5px;" onchange="onGrinderChange()"></select>
+                <div class="num-input-row" style="margin-bottom:2px;">
+                  <button type="button" class="step-btn" id="minus-grinder" onclick="stepGrinderDial(-1)">-</button>
+                  <input type="number" id="grinder-dial-num" class="direct-num-input" step="1" value="4.5" onchange="onGrinderDialDirectInput()" />
+                  <span class="unit-txt" id="grinder-unit-txt">눈금</span>
+                  <button type="button" class="step-btn" id="plus-grinder" onclick="stepGrinderDial(1)">+</button>
+                </div>
+                <div class="ctrl-sub-hint">
+                  <span id="grinder-summary-txt">약국 실사용 기준 4.5</span>
+                  <a id="grinder-source-link" href="#" target="_blank" rel="noopener" class="source-link" style="display:none;">출처</a>
+                </div>
+              </div>
+
+              <div id="general-grind-controls" class="grind-mode-panel" hidden>
+                <div class="general-grind-options" role="radiogroup" aria-label="일반 분쇄도 5단계">
+                  <label><input type="radio" name="general-grind-level" value="1"> 1단계 · 매우 굵게</label>
+                  <label><input type="radio" name="general-grind-level" value="2"> 2단계 · 굵게</label>
+                  <label><input type="radio" name="general-grind-level" value="3" checked> 3단계 · 중간 (기본값)</label>
+                  <label><input type="radio" name="general-grind-level" value="4"> 4단계 · 곱게</label>
+                  <label><input type="radio" name="general-grind-level" value="5"> 5단계 · 매우 곱게</label>
+                </div>
+                <div class="ctrl-sub-hint">그라인더 눈금이나 마이크론으로 환산하지 않는 정성적 분류입니다.</div>
+              </div>
+
+              <div id="grinder-none-controls" class="grind-mode-panel" hidden>
+                <div class="ctrl-sub-hint">분쇄 설정 없이도 레시피 작성과 추출을 진행할 수 있습니다.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 실측 TDS(%) 및 실제 완성 음료 무게(g) 입력 바 -->
+          <div class="measured-bar">
+            <span style="font-weight:800; color:#495057;">🔬 실측 입력(선택):</span>
+            <div>
+              TDS <input type="number" id="measured-tds" class="mini-input" step="0.01" placeholder="미측정" oninput="updateDial()" /> %
+            </div>
+            <div>
+              음료무게 <input type="number" id="measured-bev" class="mini-input" step="1" placeholder="미측정" oninput="updateDial()" /> g
+            </div>
+            <span id="measured-ey-result" style="font-weight:900; color:var(--theme-dark);">TDS와 실제 음료 무게 입력 시 실측 EY 계산</span>
+          </div>
+        </div>
+
+        <!-- [하단] 3D 입체 추출 시작 & 저장 버튼 (나란히 배치해 세로 높이 절약) -->
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:8px; margin-top:8px;">
+          <button class="btn-3d" onclick="openBrewModal()">
+            ▶ 3D 추출 시작 (하단)
+          </button>
+          <button class="btn-3d btn-3d-gold" onclick="saveCurrentRecipe()">
+            ⭐ 세팅 저장 (+엑셀)
+          </button>
+        </div>
+      </div>
+
+      <!-- [우측 패널] 향미 밸런스 바 & 눈금/라벨이 완벽 복원된 차트 2종 -->
+      <div class="panel">
+        <div>
+          <div class="balance-strip">
+            <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800;">
+              <span style="color:var(--sour-color);">◀ 산미 <b id="sour-pct">시음 후 평가</b></span>
+              <span style="color:var(--sweet-color);">● 단맛·밸런스 <b id="sweet-pct">시음 후 평가</b></span>
+              <span style="color:var(--bitter-color);">쓴맛·바디 <b id="bitter-pct">시음 후 평가</b> ▶</span>
+            </div>
+            <div class="meter-track">
+              <div class="meter-pointer" id="balance-pointer" style="left:50%;"></div>
+            </div>
+          </div>
+
+          <div class="charts-grid">
+            <div>
+              <div style="font-size:11.5px; font-weight:800; margin-bottom:4px; color:#495057;">
+                ① 시간별 성분 용출 개념도(개념 곡선) & 목표 시간선
+              </div>
+              <canvas id="timeChart" class="chart-canvas" width="420" height="210"></canvas>
+            </div>
+            <div>
+              <div style="font-size:11.5px; font-weight:800; margin-bottom:4px; color:#495057;">
+                ② SCA 골든컵 컨트롤 차트 (EY 18~22% · TDS 1.15~1.35%)
+              </div>
+              <canvas id="scaChart" class="chart-canvas" width="360" height="210"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="diagnosis-bar">
+          <div>
+            <strong id="diag-title" style="color:var(--theme-dark);">[가이드]</strong>
+            <span id="diag-desc">원두 및 드리퍼 추천 시작점입니다.</span>
+          </div>
+          <a id="recipe-source-link" href="https://brewster.co.kr/" target="_blank" class="source-link">🔗 원문 출처 보기</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 3. 접이식 누적 레시피 보관함 (필요할 때만 펼쳐서 스크롤 최소화) ================= -->
+    <details class="recipe-board" id="recipe-board-details">
+      <summary>
+        <span id="recipe-board-title">📔 누적 레시피 보관함 & 엑셀 백업/복원 (클릭하여 펼치기/접기)</span>
+        <span style="font-size:11.5px; color:var(--text-sub);" id="excel-file-info">기본 엑셀 자동저장 연동됨</span>
+      </summary>
+
+      <div class="excel-btn-group">
+        <button class="excel-btn" style="background:#fffdf5; border-color:#f59f00; color:#d9480f;" onclick="saveCurrentRecipe()">
+          ⭐ 현재 세팅 저장 (+기본엑셀 자동저장)
+        </button>
+        <button class="excel-btn backup" onclick="downloadExcelFile('backup')">
+          📥 백업용 엑셀 저장 (요구 시)
+        </button>
+        <button class="excel-btn load1" onclick="triggerExcelUpload('default')">
+          📂 1) 기본 엑셀 불러오기
+        </button>
+        <button class="excel-btn load2" onclick="triggerExcelUpload('backup')">
+          🗂️ 2) 백업용 파일 불러오기
+        </button>
+        <input type="file" id="excel-file-input" accept=".csv" style="display:none;" onchange="handleExcelFileUpload(event)" />
+      </div>
+
+      <div class="recipe-grid" id="recipe-grid"></div>
+    </details>
+
+  </div>
+
+  <!-- ================= 4. 3D 실사 추출 모달 (비이커 글씨 제거 & 상·하단 3D 버튼) ================= -->
+  <div class="modal-overlay" id="brewModal">
+    <div class="brew-modal">
+      <div class="modal-header">
+        <div>
+          <h2 id="modal-title" style="font-size:16px; font-weight:900;">3D 라이브 브루잉</h2>
+          <div id="modal-subtitle" style="font-size:11.5px; color:#cbd5e1;">원두 30g · 물 투입량 480g</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-3d" id="btn-brew-top" style="padding:8px 14px; font-size:13px;" onclick="toggleBrewTimer()">
+            ▶ 추출 시작 (상단)
+          </button>
+          <button class="btn-3d btn-3d-dark" style="padding:8px 12px; font-size:12.5px;" onclick="closeBrewModal()">
+            ✕ 닫기
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <!-- 좌측: 3D 추출 캔버스 (드리퍼·비이커 위 글씨 완전 제거, 상단 HUD + 하단 저울 LED만 깔끔하게 표시) -->
+        <div class="anim-stage-box">
+          <canvas id="brewAnimCanvas" width="388" height="440"></canvas>
+        </div>
+
+        <!-- 우측: 간결한 스케줄 리스트 & 하단 3D 입체 버튼 -->
+        <div class="brew-info-box">
+          <div>
+            <div style="font-size:11.5px; font-weight:800; color:#0077ac; margin-bottom:6px;" id="modal-voice-pill">
+              🔊 음성 & 물소리 ASMR 작동
+            </div>
+
+            <div class="stage-alert-banner" id="stage-banner">
+              <div class="stage-banner-title" id="stage-banner-title">준비 완료: [▶ 추출 시작]을 눌러주세요</div>
+              <div class="stage-banner-desc" id="stage-banner-desc">
+                10초 준비 카운트다운 후 단계별 물 붓기와 멈춤 대기를 안내합니다.
+              </div>
+            </div>
+
+            <div style="font-size:12px; font-weight:900; color:#495057; margin:10px 0 5px 0;">
+              ⏱️ 단계별 물 투입 스케줄 <span id="modal-bypass-badge" style="color:#d9480f;"></span>
+            </div>
+            <div class="schedule-list" id="schedule-list"></div>
+          </div>
+
+          <div class="modal-bottom-controls">
+            <button class="btn-3d" id="btn-brew-bottom" style="flex:1.5;" onclick="toggleBrewTimer()">
+              ▶ 추출 시작 (하단)
+            </button>
+            <button class="btn-3d btn-3d-dark" style="flex:1;" onclick="resetBrewTimer()">
+              ↺ 리셋
+            </button>
+            <button class="btn-3d btn-3d-gold" id="btn-sound-toggle" style="flex:1;" onclick="toggleSound()">
+              🔊 소리 켜짐
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 분리된 데이터 파일(1단계) 및 작동 엔진 파일(3단계) 순서대로 로드 -->
+  <script src="coffee_recipes.js"></script>
+  <script src="brew_engine.js"></script>
+</body>
+</html>

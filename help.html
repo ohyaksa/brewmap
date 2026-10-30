@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>오찬욱 바리스타 3D 브루잉 다이얼러 v1.6 — 공식 사용 설명서</title>
+  <style>
+    :root {
+      --theme-color: #00a1e4;
+      --theme-dark: #0077ac;
+      --theme-soft: #e7f5ff;
+      --bg-color: #f1f3f5;
+      --card-bg: #ffffff;
+      --text-main: #212529;
+      --text-sub: #495057;
+      --border-color: #dee2e6;
+      --gold-color: #f59f00;
+      --green-color: #2b8a3e;
+      --red-color: #c92a2a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      padding: 16px;
+      line-height: 1.55;
+      font-size: 13.5px;
+    }
+
+    .help-container {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    /* 3D 입체 버튼 스타일 */
+    .btn-3d {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 18px;
+      font-size: 13.5px;
+      font-weight: 900;
+      color: #ffffff;
+      background: linear-gradient(180deg, #22b8cf 0%, var(--theme-color) 45%, var(--theme-dark) 100%);
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow:
+        0 4px 0 #004e75,
+        0 6px 12px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+      transition: transform 0.1s ease, filter 0.15s;
+    }
+
+    .btn-3d:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+
+    .btn-3d:active {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 #004e75;
+    }
+
+    .btn-3d-dark {
+      background: linear-gradient(135deg, #495057 0%, #343a40 50%, #212529 100%);
+      box-shadow: 0 4px 0 #0b0d0e, 0 6px 12px rgba(0, 0, 0, 0.22);
+    }
+
+    /* 상단 헤더 */
+    .help-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #ffffff;
+      padding: 20px 24px;
+      border-radius: 16px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .ver-badge {
+      background: #ffd43b;
+      color: #212529;
+      font-weight: 900;
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* 목차 네비게이션 바 */
+    .toc-bar {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: sticky;
+      top: 8px;
+      z-index: 100;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .toc-link {
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #f8f9fa;
+      border: 1px solid #ced4da;
+      color: #212529;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+
+    .toc-link:hover {
+      background: var(--theme-soft);
+      border-color: var(--theme-color);
+      color: var(--theme-dark);
+    }
+
+    /* 섹션 카드 */
+    .section-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+
+    .section-title {
+      font-size: 17px;
+      font-weight: 900;
+      color: #0f172a;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      border-bottom: 2px solid var(--theme-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .section-sub {
+      font-size: 12px;
+      color: #6c757d;
+      font-weight: 700;
+    }
+
+    h3 {
+      font-size: 14.5px;
+      font-weight: 900;
+      color: var(--theme-dark);
+      margin: 14px 0 8px 0;
+    }
+
+    p, li {
+      color: var(--text-sub);
+      margin-bottom: 6px;
+    }
+
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 10px;
+    }
+
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .grid-3col {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .info-box {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-left: 4px solid var(--theme-color);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 8px 0;
+    }
+
+    .warn-box {
+      background: #fff9db;
+      border: 1px solid #ffec99;
+      border-left: 4px solid #f59f00;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin: 8px 0;
+    }
+
+    /* 테이블 스타일 */
+    .table-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+      margin-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th, td {
+      border: 1px solid #dee2e6;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f1f3f5;
+      font-weight: 900;
+      color: #212529;
+      white-space: nowrap;
+    }
+
+    tr:nth-child(even) td {
+      background: #fafbfc;
+    }
+
+    .num-col {
+      text-align: right;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tag-user { background: #d3f9d8; color: #2b8a3e; }
+    .tag-mfg  { background: #e7f5ff; color: #0077ac; }
+    .tag-comm { background: #fff3bf; color: #d9480f; }
+    .tag-Lock { background: #ffe3e3; color: #c92a2a; }
+
+    a.ext-link {
+      color: var(--theme-dark);
+      font-weight: 800;
+      text-decoration: underline;
+    }
+
+    .footer-bar {
+      text-align: center;
+      padding: 20px;
+      background: var(--card-bg);
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      margin-top: 18px;
+    }
+
+    @media (max-width: 860px) {
+      .grid-2col, .grid-3col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="help-container">
+
+    <!-- 상단 헤더 -->
+    <div class="help-header">
+      <div>
+        <h1 style="font-size:21px; font-weight:900;">
+          ☕ 오찬욱 바리스타 3D 브루잉 다이얼러 <span class="ver-badge">Version 1.6 공식 설명서</span>
+        </h1>
+        <div style="font-size:12.5px; color:#cbd5e1; margin-top:4px;">
+          원두 24종 · 드리퍼 3종 · 7단계 중량 × 4모드 · 바리스타 프리셋 6종 · 그라인더 13종 · 분쇄 설정 3방식 · 실측 TDS/EY
+        </div>
+      </div>
+      <div>
+        <a href="index.html" class="btn-3d">← 브루잉 다이얼러(메인 화면)로 돌아가기</a>
+      </div>
+    </div>
+
+    <!-- 빠른 이동 목차 -->
+    <nav class="toc-bar">
+      <a href="#sec-1" class="toc-link">1. v1.6 업데이트 & 파일 구조</a>
+      <a href="#sec-2" class="toc-link">2. 마스터 · 지인 초대 모드</a>
+      <a href="#sec-3" class="toc-link">3. 막대 · 숫자 직접입력 · 🔒고정</a>
+      <a href="#sec-4" class="toc-link">4. 7중량 × 4모드 & 드리퍼 3종</a>
+      <a href="#sec-5" class="toc-link">5. 원두 24종 추천 시작값</a>
+      <a href="#sec-6" class="toc-link">6. 유명 바리스타 프리셋 6종</a>
+      <a href="#sec-7" class="toc-link">7. 그라인더 13종 설정 기준</a>
+      <a href="#sec-8" class="toc-link">8. 골든컵 차트 · 3D추출 · 엑셀백업</a>
+    </nav>
+
+    <!-- ================= 섹션 1: v1.6 업데이트 및 파일 구조 ================= -->
+    <section class="section-card" id="sec-1">
+      <div class="section-title">
+        <span>1. 버전 1.6 (v1.6) 업데이트 및 시스템 파일 구조</span>
+        <span class="section-sub">안정성 · 확장성 · 과학적 검증 강화</span>
+      </div>
+
+      <div class="grid-2col">
+        <div class="info-box">
+          <h3>📂 4개 파일 모듈 분리 아키텍처 (향후 서버 연동 대비)</h3>
+          <ul>
+            <li><b>① <code>coffee_recipes.js</code> (데이터 전용):</b> 원두 24종, 드리퍼 3종 및 원본 프리셋 10종, 바리스타 프리셋 6종, 그라인더 13종, 7중량 × 4모드 계산 규칙이 담긴 순수 데이터베이스입니다.</li>
+            <li><b>② <code>index.html</code> (화면·레이아웃 전용):</b> 스크롤을 최소화한 1줄 2개 배치 조작창, 차트 캔버스, 접이식 레시피 보관함이 담긴 경량 UI 파일입니다.</li>
+            <li><b>③ <code>brew_engine.js</code> (작동 엔진·3D·사운드·엑셀 전용):</b> 다이얼 계산, 차트 렌더링, 3D 실사 추출 그래픽, 물 따르는 ASMR 효과음, 엑셀 자동저장 및 향후 Firebase 서버 통신을 전담합니다.</li>
+            <li><b>④ <code>help.html</code> (현재 파일 — 공식 설명서):</b> v1.6 기능과 레시피 출처 링크를 언제든 열람할 수 있는 독립 매뉴얼입니다.</li>
+          </ul>
+        </div>
+
+        <div class="warn-box">
+          <h3>✨ v1.6에서 변경된 핵심 포인트</h3>
+          <ul>
+            <li><b>분쇄 설정 통합:</b> 등록 그라인더 모델·눈금, 일반 분쇄도 5단계, 분쇄 설정 안 함 중 하나를 선택합니다. 시뮬레이션 저항지수는 제거했습니다.</li>
+            <li><b>실측값 중심 표시:</b> 미측정 EY/TDS 추정값은 표시하지 않습니다. 실제 TDS와 완성 음료 무게가 모두 입력된 경우에만 EY를 계산합니다.</li>
+            <li><b>기존 조작 편의성 유지:</b> 1줄 2개 배치, 막대 조절, 숫자 직접 입력과 잠금 기능을 유지합니다.</li>
+            <li><b>실수 방지 잠금(<code>🔒 고정</code>):</b> 세팅 결정 후 잠금 버튼을 누르면 화면을 스크롤하다 막대를 건드려도 숫자가 절대 바뀌지 않습니다.</li>
+            <li><b>깔끔한 3D 추출 화면:</b> 비이커(드리퍼·서버) 위의 글씨를 모두 제거하고, 상단 상태바(HUD)와 하단 3D 전자저울 LED(시간·무게)만 선명하게 남겼습니다.</li>
+            <li><b>물 붓기 vs 멈춤 대기 완벽 구분:</b> 물을 부을 때는 <b>파란색 HUD + 물 따르는 ASMR 효과음</b>이 나오고, 멈추고 기다릴 때는 <b>하강 정지 벨소리 + 황금빛 카페 라운지 배경</b>으로 전환됩니다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 섹션 2: 입장 모드 및 권한 가이드 ================= -->
+    <section class="section-card" id="sec-2">
+      <div class="section-title">
+        <span>2. 입장 모드 및 권한 가이드 (마스터 모드 vs 지인 개별 링크)</span>
+        <span class="section-sub">보안 강화 및 사용자별 레시피 자동 관리</span>
+      </div>
+
+      <div class="grid-2col">
+        <div class="info-box">
+          <h3>👑 마스터 모드 (오찬욱 바리스타)</h3>
+          <ul>
+            <li>첫 화면 하단의 <b>[👑 마스터 입장]</b> 버튼을 누른 뒤 보안 입장 코드를 입력해 접속합니다. (현재 화면에 코드 숫자 힌트가 노출되지 않습니다.)</li>
+            <li>상단 헤더의 <b>[🔗 지인 초대링크 복사]</b> 버튼을 눌러 지인의 성함(예: <code>김윤정</code>)을 입력하면 <code>...?name=김윤정</code> 형태의 전용 초대 링크가 클립보드에 복사됩니다.</li>
+            <li>마스터는 보관함에서 본인과 모든 지인의 누적 레시피를 통합 열람·백업할 수 있습니다.</li>
+          </ul>
+        </div>
+
+        <div class="info-box">
+          <h3>☕ 지인(개별 링크) 모드</h3>
+          <ul>
+            <li>마스터가 보낸 초대 링크(<code>?name=성함</code>)로 접속하면 첫 화면에 <b>"○○○ 님, 환영합니다!"</b> 배너가 자동으로 표시되며, 코드 입력 없이 <b>[☕ 바로 입장하기]</b> 버튼 한 번으로 입장합니다.</li>
+            <li>일반 주소로 접속한 경우에도 방문자 성함을 입력해 바로 입장할 수 있습니다.</li>
+            <li>세팅 저장 시 <code>개별링크_[성함]_기본레시피.csv</code> 파일로 본인 레시피만 독립 저장·관리됩니다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 섹션 3: 세팅 조작 & 고정(잠금) 가이드 ================= -->
+    <section class="section-card" id="sec-3">
+      <div class="section-title">
+        <span>3. v1.6 세팅 조작 가이드 (막대 조절 · 숫자 직접 입력 · 🔒 고정)</span>
+        <span class="section-sub">1줄 2개 컴팩트 배치로 스크롤 최소화</span>
+      </div>
+
+      <p>슬라이더 막대만으로는 세밀한 숫자를 맞추기 어렵고 손가락이 미끄러지는 문제를 해결하기 위해, <b>막대는 큼직한 단위</b>로 움직이고 <b>숫자 입력칸과 <code>[-]</code> <code>[+]</code> 버튼은 세밀한 단위</b>로 작동하도록 이원화했습니다.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>조절 항목</th>
+              <th>조작 방식</th>
+              <th>입력 가능 범위 / 선택값</th>
+              <th><code>🔒 고정</code> 잠금 효과</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>1. 원두량 (g)</b></td>
+              <td>막대 5g 단위 · 직접 입력 0.5g · 버튼 ±1g</td>
+              <td>10g ~ 60g</td>
+              <td>잠금 시 원두량 고정 (중량 프리셋 변경 시에도 보호)</td>
+            </tr>
+            <tr>
+              <td><b>2. 총 물 투입량 (g)</b></td>
+              <td>막대 20g 단위 · 직접 입력 1g · 버튼 ±5g</td>
+              <td>120g ~ 1000g</td>
+              <td>잠금 시 물 투입량 고정</td>
+            </tr>
+            <tr>
+              <td><b>3. 추출 수온 (°C)</b></td>
+              <td>막대 1°C 단위 · 직접 입력 0.1°C · 버튼 ±0.5°C</td>
+              <td>80.0°C ~ 100.0°C</td>
+              <td>잠금 시 원두를 바꿔도 수온 유지</td>
+            </tr>
+            <tr>
+              <td><b>4. 목표 시간 (초)</b></td>
+              <td>막대 15초 단위 · 직접 입력 1초 · 버튼 ±5초</td>
+              <td>60초 ~ 360초</td>
+              <td>잠금 시 목표 추출 시간 고정</td>
+            </tr>
+            <tr>
+              <td><b>5. 분쇄 설정</b></td>
+              <td>아래 3가지 방식 중 하나 선택</td>
+              <td>등록 그라인더 모델·눈금 / 일반 분쇄도 1~5단계 / 설정 안 함</td>
+              <td>잠금 시 현재 선택 방식과 해당 값 고정</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="info-box">
+        <b>⑤ 분쇄 설정 — 세 가지 방식 중 하나만 선택:</b>
+        <ol>
+          <li><b>등록된 그라인더 모델 및 눈금:</b> 기존 그라인더 13종에서 모델을 선택하고 해당 기기의 고유 눈금을 기록합니다. 약국 Feima 600N의 사용자 실사용 기준은 4.5, 가정용 Baratza Encore Original의 기준은 14입니다.</li>
+          <li><b>일반 분쇄도 5단계:</b> 1단계 매우 굵게 → 2단계 굵게 → 3단계 중간(기본값) → 4단계 곱게 → 5단계 매우 곱게. 모델을 모르는 사용자를 위한 정성적 분류입니다.</li>
+          <li><b>분쇄 설정 안 함:</b> 분쇄 관련 입력 없이도 레시피 작성, 저장 및 추출 진행이 가능합니다.</li>
+        </ol>
+        세 방식은 서로 배타적이며 선택한 방식의 입력창만 표시됩니다. 일반 분쇄도 5단계를 서로 다른 그라인더의 숫자 눈금이나 마이크론(μm)으로 환산하지 않습니다.
+      </div>
+      <div class="warn-box">
+        <b>🔒 세팅 고정(Lock) 활용 팁:</b> 필요한 설정을 맞춘 뒤 각 박스의 <b>[🔓 고정]</b> 버튼을 누르면 해당 입력이 잠깁니다. 우측 상단의 <b>[🔓 전체 세팅 고정하기]</b>는 원두량·물 투입량·수온·목표 시간·분쇄 설정을 함께 잠급니다. 분쇄 설정 안 함을 선택하면 분쇄 잠금 버튼은 표시되지 않습니다.
+      </div>
+    </section>
+
+    <!-- ================= 섹션 4: 7단계 중량 × 4가지 추출 모드 & 드리퍼 3종 ================= -->
+    <section class="section-card" id="sec-4">
+      <div class="section-title">
+        <span>4. 공통 4가지 추출 모드 × 7단계 중량 조견표 & 드리퍼 3종 가이드</span>
+        <span class="section-sub">표준 비율 1:16 · 바이패스(1:12 추출 + 1:4 온수 추가)</span>
+      </div>
+
+      <h3>4.1 원두 중량 7단계 × 4가지 추출 모드 물 투입량 검증표</h3>
+      <p>아래 표의 모든 수치는 완성된 커피 음료의 무게가 아니라 드리퍼 및 서버에 붓는 <b>총 물 투입량(g)</b>입니다. 원두와 필터가 물을 흡수하므로 실제 서버에 모이는 완성 음료 무게는 투입수량보다 적습니다.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>원두 중량</th>
+              <th class="num-col">① 진하게 (1:14)</th>
+              <th class="num-col">② 표준 (1:16 · 기본)</th>
+              <th class="num-col">③ 연하게 (1:18)</th>
+              <th>④ 바이패스 모드 (드리퍼 1:12 추출 + 추출 후 서버 온수 1:4 추가 = 최종 1:16)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>15g</b></td>
+              <td class="num-col">210g</td>
+              <td class="num-col"><b>240g</b></td>
+              <td class="num-col">270g</td>
+              <td>드리퍼 <b>180g</b> 추출 후 드리퍼 제거 + 서버에 온수 <b>60g</b> 추가 = 총 <b>240g</b></td>
+            </tr>
+            <tr>
+              <td><b>20g</b></td>
+              <td class="num-col">280g</td>
+              <td class="num-col"><b>320g</b></td>
+              <td class="num-col">360g</td>
+              <td>드리퍼 <b>240g</b> 추출 후 드리퍼 제거 + 서버에 온수 <b>80g</b> 추가 = 총 <b>320g</b></td>
+            </tr>
+            <tr>
+              <td><b>25g</b></td>
+              <td class="num-col">350g</td>
+              <td class="num-col"><b>400g</b></td>
+              <td class="num-col">450g</td>
+              <td>드리퍼 <b>300g</b> 추출 후 드리퍼 제거 + 서버에 온수 <b>100g</b> 추가 = 총 <b>400g</b></td>
+            </tr>
+            <tr>
+              <td><b>30g</b></td>
+              <td class="num-col">420g</td>
+              <td class="num-col"><b>480g</b></td>
+              <td class="num-col">540g</td>
+              <td>드리퍼 <b>360g</b> 추출 후 드리퍼 제거 + 서버에 온수 <b>120g</b> 추가 = 총 <b>480g</b></td>
+            </tr>
+            <tr>
+              <td><b>35g</b></td>
+              <td class="num-col">490g</td>
+              <td class="num-col"><b>560g</b></td>
+              <td class="num-col">630g</td>
+              <td>드리퍼 <b>420g</b> 추출 후 드리퍼 제거 + 서버에 온수 <b>140g</b> 추가 = 총 <b>560g</b></td>
+            </tr>
+            <tr>
+              <td><b>40g</b></td>
+              <td class="num-col">560g</td>
+              <td class="num-col"><b>640g</b></td>
+              <td class="num-col">720g</td>
+              <td>드리퍼 <b>480g</b> 추출 후 드리퍼 제거 + 서버에 온수 <b>160g</b> 추가 = 총 <b>640g</b></td>
+            </tr>
+            <tr>
+              <td><b>50g</b></td>
+              <td class="num-col">700g</td>
+              <td class="num-col"><b>800g</b></td>
+              <td class="num-col">900g</td>
+              <td>드리퍼 <b>600g</b> 추출 후 드리퍼 제거 + 서버에 온수 <b>200g</b> 추가 = 총 <b>800g</b></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-box">
+        <b>💡 바이패스(Bypass) 모드 주의사항:</b> 바이패스는 농축 추출(1:12) 후 깨끗한 온수(1:4)를 가수해 농도를 조절하는 방식입니다. 특정 좋은 성분만 선택적으로 추출하거나 떫은맛을 원천 차단하는 기법이 아니며, 40~50g 대용량 추출 시에는 드리퍼 용량을 확인하거나 두 번에 나누어 추출하세요.
+      </div>
+
+      <h3>4.2 드리퍼 3종별 고유 푸어 패턴 및 공식/로스터리 원본 프리셋 (10종)</h3>
+      <div class="grid-3col">
+        <div class="info-box">
+          <b>🔵 Blue Bottle Dripper</b><br/>
+          • <b>공통 모드 패턴(4회):</b> 블루밍(약 14.3% 또는 50g, 40초 대기) → 0:40(43%) → 1:10(71%) → 1:40(100%)<br/>
+          • <b>싱글 오리진 원본:</b> 22g : 350g (1:15.9), 50g→150g→250g→350g<br/>
+          • <b>블렌드 원본:</b> 30g : 350g (1:11.7 고농도 예시)<br/>
+          • <a href="https://bluebottlecoffee.com/us/eng/brew-guides/pour-over" target="_blank" class="ext-link">공식 가이드 원문</a> | <a href="https://blog.bluebottlecoffee.com/posts/brew-theory-extraction-strength-and-finding-the-sweet-spot-for-pour-over-coffee" target="_blank" class="ext-link">비율 설명 원문</a>
+        </div>
+
+        <div class="info-box">
+          <b>🔺 HARIO V60</b><br/>
+          • <b>공통 모드 패턴(5회 균등):</b> 총 물량의 20%(0:00 블루밍) → 40%(0:45) → 60%(1:10) → 80%(1:30) → 100%(1:50)<br/>
+          • <b>HARIO UK 공식:</b> 15g : 250g (1:16.7), 92~96°C, 약 2:30~3:00<br/>
+          • <b>HARIO Korea 기본법:</b> 원두 2배 물 블루밍(30초) 후 3회 분할 투입<br/>
+          • <a href="https://www.hario.co.uk/pages/brew-guides-v60-expert" target="_blank" class="ext-link">HARIO UK 원문</a> | <a href="https://hariokorea.com/v60/" target="_blank" class="ext-link">HARIO Korea 원문</a>
+        </div>
+
+        <div class="info-box">
+          <b>🌊 Kalita Wave 155 / 185</b><br/>
+          • <b>공통 모드 패턴(4회):</b> 0:00(12.5%) → 0:45(47%) → 1:45(75%) → 2:00(100%)<br/>
+          • <b>칼리타 공식 설명서:</b> 20g : 320g (1:16), 2~3분<br/>
+          • <b>로스터리 프리셋:</b> Partners Coffee(20:320), Copan(20:320, 96°C), Fuglen Korea 155(15:250) / 185(30:500), Bean Brothers(20:320)<br/>
+          • <a href="https://ep-shopify.s3.amazonaws.com/related-documents/kalita/kalita-wave-brewing-instructions.pdf" target="_blank" class="ext-link">공식 PDF</a> | <a href="https://fuglencoffee.kr/sub/brew.html/brew.html" target="_blank" class="ext-link">Fuglen 가이드</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 섹션 5: 원두 24종 프로파일 및 추천 시작값 ================= -->
+    <section class="section-card" id="sec-5">
+      <div class="section-title">
+        <span>5. 대표 원두 24종 산지 · 가공 · 배전도별 추천 시작값 도감</span>
+        <span class="section-sub">확정된 정답이 아닌 테스트 출발점(Starting Point)</span>
+      </div>
+
+      <p>산지나 품종 이름만으로 최적의 수온과 분쇄도가 하나로 정해지지는 않습니다. 항상 <b>실제 구매한 원두의 배전도와 로스터 권장값을 우선</b>하고, 아래 수온 범위와 드리퍼를 첫 추출의 기준점으로 활용하세요.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>원두 표시명 (`id`)</th>
+              <th>국가 / 지역</th>
+              <th>품종 / 가공 방식</th>
+              <th>일반적 배전도</th>
+              <th>우선 테스트 수온 (시작점)</th>
+              <th>기본 비율</th>
+              <th>처음 비교할 드리퍼 및 조정 메모</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>파나마 에스메랄다 게이샤</b><br/>(<code>geisha</code>)</td>
+              <td>파나마 / 보케테</td>
+              <td>Geisha / 워시드</td>
+              <td>약배전</td>
+              <td><b>94~96°C</b> (95.0°C)</td>
+              <td>1:16</td>
+              <td>V60 / Blue Bottle · 향이 얇으면 분쇄를 한 단계 곱게</td>
+            </tr>
+            <tr>
+              <td><b>에티오피아 게샤 빌리지</b><br/>(<code>ethiopia_gesha_natural</code>)</td>
+              <td>에티오피아 / 벤치 마지</td>
+              <td>Gesha / 내추럴</td>
+              <td>약배전</td>
+              <td><b>92~95°C</b> (94.0°C)</td>
+              <td>1:16</td>
+              <td>V60 · 발효·베리 향이 과하면 온도를 낮춰 비교</td>
+            </tr>
+            <tr>
+              <td><b>에티오피아 예가체프 G1</b><br/>(<code>yirgacheffe</code>)</td>
+              <td>에티오피아 / 예가체프·게뎁</td>
+              <td>Heirloom / 워시드</td>
+              <td>약배전</td>
+              <td><b>94~96°C</b> (95.0°C)</td>
+              <td>1:16</td>
+              <td>V60 · 꽃향·시트러스의 투명도 비교</td>
+            </tr>
+            <tr>
+              <td><b>에티오피아 코케 / 코체레 허니</b><br/>(<code>ethiopia_koke_honey</code>)</td>
+              <td>에티오피아 / 코케·코체레</td>
+              <td>Heirloom / 허니</td>
+              <td>약~중약배전</td>
+              <td><b>92~95°C</b> (93.0°C)</td>
+              <td>1:16</td>
+              <td>V60 / Kalita · 발효감이 과하면 온도·교반 낮추기</td>
+            </tr>
+            <tr>
+              <td><b>에티오피아 시다마 / 구지 워시드</b><br/>(<code>ethiopia_sidama_washed</code>)</td>
+              <td>에티오피아 / 시다마·구지</td>
+              <td>Heirloom / 워시드</td>
+              <td>약배전</td>
+              <td><b>93~96°C</b> (94.0°C)</td>
+              <td>1:16</td>
+              <td>V60 · 티라이크한 향을 목표로 과한 교반 피하기</td>
+            </tr>
+            <tr>
+              <td><b>에티오피아 구지 G1 내추럴</b><br/>(<code>ethiopia_guji_natural</code>)</td>
+              <td>에티오피아 / 구지</td>
+              <td>Heirloom / 내추럴</td>
+              <td>약배전</td>
+              <td><b>92~96°C</b> (94.0°C)</td>
+              <td>1:16</td>
+              <td>V60 / Kalita · 무거운 과실감이 과하면 수온 낮춤</td>
+            </tr>
+            <tr>
+              <td><b>케냐 AA 워시드</b><br/>(<code>kenya</code>)</td>
+              <td>케냐 / 라벨 확인</td>
+              <td>SL28, SL34 등 / 워시드</td>
+              <td>약~중약배전</td>
+              <td><b>93~96°C</b> (94.5°C)</td>
+              <td>1:16</td>
+              <td>V60 · 날카로운 산미(과소)와 건조한 떫은맛(과다) 구분 조정</td>
+            </tr>
+            <tr>
+              <td><b>르완다 버번 워시드</b><br/>(<code>rwanda_bourbon_washed</code>)</td>
+              <td>르완다 / 라벨 확인</td>
+              <td>Bourbon / 워시드</td>
+              <td>약~중배전</td>
+              <td><b>92~95°C</b> (93.5°C)</td>
+              <td>1:16</td>
+              <td>Kalita / V60 · 단맛·산미 균형부터 시작</td>
+            </tr>
+            <tr>
+              <td><b>부룬디 워시드</b><br/>(<code>burundi_washed</code>)</td>
+              <td>부룬디 / 라벨 확인</td>
+              <td>Bourbon / 워시드</td>
+              <td>약~중배전</td>
+              <td><b>92~95°C</b> (93.5°C)</td>
+              <td>1:16</td>
+              <td>Kalita / V60 · 바디가 얇으면 조금 곱게 시험</td>
+            </tr>
+            <tr>
+              <td><b>탄자니아 킬리만자로 AA</b><br/>(<code>tanzania_kilimanjaro_washed</code>)</td>
+              <td>탄자니아 / 킬리만자로</td>
+              <td>라벨 확인 / 워시드</td>
+              <td>약~중배전</td>
+              <td><b>92~95°C</b> (93.5°C)</td>
+              <td>1:16</td>
+              <td>V60 / Kalita · 산미·단맛 균형형부터 시작</td>
+            </tr>
+            <tr>
+              <td><b>콜롬비아 후일라 / 수프리모</b><br/>(<code>colombia</code>)</td>
+              <td>콜롬비아 / 후일라</td>
+              <td>Caturra, Castillo / 워시드</td>
+              <td>중약~중배전</td>
+              <td><b>92~95°C</b> (93.0°C)</td>
+              <td>1:16</td>
+              <td>Kalita Wave · 단맛과 균형을 기준으로 비교</td>
+            </tr>
+            <tr>
+              <td><b>콜롬비아 핑크 버번</b><br/>(<code>colombia_pink_bourbon</code>)</td>
+              <td>콜롬비아 / 후일라 등</td>
+              <td>Pink Bourbon / 공정 확인</td>
+              <td>약~중약배전</td>
+              <td><b>93~96°C</b> (94.0°C)</td>
+              <td>1:16</td>
+              <td>V60 · 가공 방식과 배전도를 별도로 확인</td>
+            </tr>
+            <tr>
+              <td><b>태국 치앙마이 티피카</b><br/>(<code>thailand</code>)</td>
+              <td>태국 / 치앙마이</td>
+              <td>Typica / 워시드·허니</td>
+              <td>중배전</td>
+              <td><b>90~94°C</b> (92.0°C)</td>
+              <td>1:16</td>
+              <td>Kalita · 배전도 정보가 부족하면 92°C부터 시험</td>
+            </tr>
+            <tr>
+              <td><b>과테말라 안티구아 SHB</b><br/>(<code>guatemala</code>)</td>
+              <td>과테말라 / 안티구아</td>
+              <td>Bourbon, Caturra / 워시드</td>
+              <td>중배전</td>
+              <td><b>91~94°C</b> (92.0°C)</td>
+              <td>1:16</td>
+              <td>Kalita Wave · 중배전이면 92°C 전후부터 시작</td>
+            </tr>
+            <tr>
+              <td><b>코스타리카 따라주 허니</b><br/>(<code>costa_rica_honey</code>)</td>
+              <td>코스타리카 / 따라주</td>
+              <td>Caturra, Catuai / 허니</td>
+              <td>중약~중배전</td>
+              <td><b>91~94°C</b> (92.0°C)</td>
+              <td>1:16</td>
+              <td>Kalita / V60 · 허니 발효 특성이 강하면 낮은 온도부터 시험</td>
+            </tr>
+            <tr>
+              <td><b>엘살바도르 파카마라</b><br/>(<code>el_salvador_pacamara</code>)</td>
+              <td>엘살바도르 / 라벨 확인</td>
+              <td>Pacamara / 워시드·허니</td>
+              <td>중약~중배전</td>
+              <td><b>92~95°C</b> (93.0°C)</td>
+              <td>1:16</td>
+              <td>V60 / Kalita · 품종과 배전도에 따라 추출 속도 확인</td>
+            </tr>
+            <tr>
+              <td><b>브라질 세하도 / 산토스</b><br/>(<code>brazil_cerrado</code>)</td>
+              <td>브라질 / 세하도·모지아나</td>
+              <td>라벨 확인 / 내추럴</td>
+              <td>중배전</td>
+              <td><b>89~93°C</b> (91.0°C)</td>
+              <td>1:16</td>
+              <td>Kalita / Blue Bottle · 초콜릿·견과류형, 쓴맛 시 수온 낮춤</td>
+            </tr>
+            <tr>
+              <td><b>온두라스 마르칼라</b><br/>(<code>honduras_marcala</code>)</td>
+              <td>온두라스 / 마르칼라</td>
+              <td>라벨 확인 / 워시드·허니</td>
+              <td>중배전</td>
+              <td><b>91~94°C</b> (92.0°C)</td>
+              <td>1:16</td>
+              <td>Kalita Wave · 배전도에 맞춰 중간 온도부터 테스트</td>
+            </tr>
+            <tr>
+              <td><b>페루 카하마르카</b><br/>(<code>peru_cajamarca_washed</code>)</td>
+              <td>페루 / 카하마르카</td>
+              <td>라벨 확인 / 워시드</td>
+              <td>중약~중배전</td>
+              <td><b>91~94°C</b> (92.5°C)</td>
+              <td>1:16</td>
+              <td>V60 / Kalita · 단맛과 클린컵을 비교</td>
+            </tr>
+            <tr>
+              <td><b>인도네시아 만델링 G1</b><br/>(<code>mandheling</code>)</td>
+              <td>인도네시아 / 수마트라</td>
+              <td>라벨 확인 / 웻헐드</td>
+              <td>중강~강배전</td>
+              <td><b>88~92°C</b> (89.0°C)</td>
+              <td>1:16 (참고 1:15~16)</td>
+              <td>Kalita / Blue Bottle · 과한 무게감·건조감 시 저온·굵은 분쇄</td>
+            </tr>
+            <tr>
+              <td><b>인도네시아 토라자</b><br/>(<code>indonesia_toraja</code>)</td>
+              <td>인도네시아 / 술라웨시</td>
+              <td>라벨 확인 / 공정 확인</td>
+              <td>중~중강배전</td>
+              <td><b>89~93°C</b> (90.0°C)</td>
+              <td>1:16 (참고 1:15~16)</td>
+              <td>Kalita · 가공 방식이 표시된 원두 라벨 우선</td>
+            </tr>
+            <tr>
+              <td><b>인도 몬순 말라바르</b><br/>(<code>india_monsooned_malabar</code>)</td>
+              <td>인도 / 말라바르</td>
+              <td>라벨 확인 / 몬순 가공</td>
+              <td>중강~강배전</td>
+              <td><b>87~91°C</b> (89.0°C)</td>
+              <td>1:16 (참고 1:15~16)</td>
+              <td>Kalita / Blue Bottle · 낮은 산미·묵직한 바디, 낮은 수온 시작</td>
+            </tr>
+            <tr>
+              <td><b>다크 로스트 블렌드</b><br/>(<code>darkblend</code>)</td>
+              <td>블렌드 (상품별 상이)</td>
+              <td>블렌드</td>
+              <td>강배전</td>
+              <td><b>86~91°C</b> (88.0°C)</td>
+              <td>1:16 (참고 1:14~15)</td>
+              <td>Blue Bottle / Kalita · 쓴맛·건조감이 크면 저온·굵은 분쇄</td>
+            </tr>
+            <tr>
+              <td><b>콜롬비아 슈가케인 디카페인</b><br/>(<code>colombia_decaf_ea</code>)</td>
+              <td>콜롬비아</td>
+              <td>EA 디카페인</td>
+              <td>로스터 배전도 우선</td>
+              <td><b>88~93°C</b> (91.0°C)</td>
+              <td>1:16 (참고 1:15~16)</td>
+              <td>Kalita / V60 · 너무 빨리 빠지면 조금 곱게 조정</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= 섹션 6: 전문 바리스타 프리셋 6종 ================= -->
+    <section class="section-card" id="sec-6">
+      <div class="section-title">
+        <span>6. 세계 유명 바리스타 공개 레시피 프리셋 (6종 · 원본 수치 및 링크 보존)</span>
+        <span class="section-sub">공통 1:16 모드로 덮어쓰지 않고 독립 선택 가능</span>
+      </div>
+
+      <p>상단 <b>[레시피 기준]</b> 드롭다운에서 바리스타 프리셋을 선택하면 해당 바리스타의 원본 원두량·물량·비율·단계별 푸어링 스케줄이 그대로 적용됩니다. (원두량을 다르게 바꿀 경우 원본 레시피와 비례 환산 레시피를 구분하여 안내합니다.)</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>바리스타 / 레시피명</th>
+              <th>사용 드리퍼</th>
+              <th>원본 원두 : 물 (비율)</th>
+              <th>권장 수온 · 분쇄</th>
+              <th>원본 푸어링 스케줄 및 핵심 포인트</th>
+              <th>목표 시간</th>
+              <th>원문 / 영상 출처</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>James Hoffmann</b><br/>A Better 1 Cup V60</td>
+              <td>HARIO V60 (1인분)</td>
+              <td><b>15g : 250g</b><br/>(1:16.7)</td>
+              <td>약배전 갓 끓인 물(95~100°C)<br/>중간-고운 분쇄</td>
+              <td>0:00 <b>50g</b> 블룸(스월) → 0:45 누적 <b>100g</b> → 1:10 <b>150g</b> → 1:30 <b>200g</b> → 1:50 <b>250g</b> (2:00 스월)</td>
+              <td>약 3:00</td>
+              <td>
+                <a href="https://www.youtube.com/watch?v=1oB1oDrDkHM" target="_blank" class="ext-link">YouTube 원문</a><br/>
+                <a href="https://baristat.com/ko/recipes/v60-hoffmann-one-cup/" target="_blank" class="ext-link">텍스트 요약</a>
+              </td>
+            </tr>
+            <tr>
+              <td><b>Tetsu Kasuya</b><br/>4:6 Method (2016 WBrC)</td>
+              <td>HARIO V60</td>
+              <td><b>20g : 300g</b><br/>(1:15.0)</td>
+              <td>92°C 전후<br/>굵은 분쇄 (Coarse)</td>
+              <td>0:00 <b>50g</b> → 0:45 누적 <b>120g</b>(앞 40%로 산미·단맛 조절) → 1:30 <b>180g</b> → 2:10 <b>240g</b> → 2:40 <b>300g</b>(뒤 60%로 농도 조절, 또는 60g×5회)</td>
+              <td>약 3:30</td>
+              <td>
+                <a href="https://www.hario-europe.com/blogs/hario-community/v60-ambassadors-tetsu-kasuya" target="_blank" class="ext-link">HARIO 인터뷰</a><br/>
+                <a href="https://www.youtube.com/watch?v=Gr-QoaJERiw" target="_blank" class="ext-link">YouTube Q&A</a>
+              </td>
+            </tr>
+            <tr>
+              <td><b>Lance Hedrick</b><br/>HARIO V60 Brewguide</td>
+              <td>HARIO V60</td>
+              <td><b>20g : 340g</b><br/>(1:17.0)</td>
+              <td>끓인 물 출발<br/>중간 분쇄 (타 그라인더 환산 금지)</td>
+              <td>0:00 <b>50g</b>(스월) → 0:30 누적 <b>100g</b>(스월) → 1:00 누적 <b>220g</b>(스월) → 1:30 누적 <b>340g</b>(스월) · 30초 간격 4회 푸어</td>
+              <td>2:30 ~ 3:30</td>
+              <td>
+                <a href="https://www.youtube.com/watch?v=Ji4lZTtRAoo" target="_blank" class="ext-link">YouTube 원문</a>
+              </td>
+            </tr>
+            <tr>
+              <td><b>Scott Rao</b><br/>HARIO V60 Recipe</td>
+              <td>플라스틱 HARIO V60 02</td>
+              <td><b>20g : 330g</b><br/>(1:16.5)</td>
+              <td>97°C<br/>중간-고운 분쇄</td>
+              <td>0:00 <b>60g</b> 블룸(강하게 스핀, 40초 대기) → 0:40 누적 <b>200g</b>(가볍게 스핀) → 70% 배수 시 누적 <b>330g</b>(가볍게 스핀)</td>
+              <td>4:00 ~ 4:30</td>
+              <td>
+                <a href="https://www.hario.co.uk/blogs/hario-ambassadors/hario-v60-recipe-interview-with-hario-ambassador-scott-rao" target="_blank" class="ext-link">HARIO UK 원문</a>
+              </td>
+            </tr>
+            <tr>
+              <td><b>George Jinyang Peng</b><br/>2025 WBrC 챔피언 (특수도구)</td>
+              <td>Solo Dripper + Melodrip</td>
+              <td><b>15g : 210g</b><br/>(1:14.0)</td>
+              <td>96°C / 80°C 온도 단계 조절</td>
+              <td>96°C <b>30g</b> 블룸 → 96°C <b>90g</b> 추가(누적 120g) → 마지막 80°C <b>90g</b>을 Melodrip으로 투입(누적 210g)</td>
+              <td>약 1:45</td>
+              <td>
+                <a href="https://sprudge.com/how-to-brew-coffee-like-the-2025-world-brewers-cup-champion-338576.html" target="_blank" class="ext-link">Sprudge 기사</a>
+              </td>
+            </tr>
+            <tr>
+              <td><b>박준성 (Park Junseong)</b><br/>2026 KBrC 시연 (Switch)</td>
+              <td>HARIO Switch (하이브리드)</td>
+              <td><b>15g : 210g</b><br/>(1:14.0)</td>
+              <td>95°C (여과) / 80°C (침지)</td>
+              <td>밸브 닫고 95°C <b>60g</b> 블룸 → 밸브 열고 95°C <b>90g</b> 여과(누적 150g) → 밸브 닫고 80°C <b>60g</b> 침지(누적 210g) → 2:10 개방</td>
+              <td>약 2:30~2:50</td>
+              <td>
+                <a href="https://omydrip.bizplano.com/r/park-junseong-kbrc-2026" target="_blank" class="ext-link">시연 요약본</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= 섹션 7: 그라인더 13종 설정 레지스트리 ================= -->
+    <section class="section-card" id="sec-7">
+      <div class="section-title">
+        <span>7. 그라인더 13종 눈금 체계 및 시작점 가이드 (실사용 vs 제조사 분리)</span>
+        <span class="section-sub">다이얼·클릭 수를 입자 크기(μm)로 임의 환산하지 않음</span>
+      </div>
+
+      <div class="warn-box">
+        <b>⚠️ 그라인더 데이터 핵심 원칙:</b><br/>
+        1. 약국에서 사용하시는 <b>페이마(Feima) 600N의 표준 다이얼 <code>4.5</code></b>와 가정에서 사용하시는 <b>바라짜 엔코(Baratza Encore)의 표준 다이얼 <code>14</code></b>는 사용자 실사용 확인 기준값(<code>userConfirmed</code>)으로 최우선 보존됩니다.<br/>
+        2. Baratza 공식 V60 가이드의 Encore 시작값 <code>23</code>은 사용자 기준값 <code>14</code>를 덮어쓰지 않고 별도 참고값으로 함께 표시합니다.<br/>
+        3. 서로 다른 그라인더의 눈금이나 클릭 수는 해당 기기 안에서만 유효하며, 실측 입도 분석 장비 데이터 없이 마이크론(μm)으로 자동 변환하지 않습니다(<code>micronCalibration: null</code>).
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>그라인더 모델명</th>
+              <th>유형 / 조절 체계</th>
+              <th>핸드드립 시작 범위</th>
+              <th>기본 시작값</th>
+              <th>근거 상태 배지</th>
+              <th>비고 및 공식 출처 링크</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>페이마(Feima) 600N [약국]</b></td>
+              <td>전동 / 1~8 숫자 다이얼 (0.5 단위)</td>
+              <td>사용자 기준 4.5</td>
+              <td><b>4.5</b></td>
+              <td><span class="tag tag-user">사용자 실사용 확인</span></td>
+              <td>약국 실사용 표준값. 제조사 공식값으로 표기하거나 타 기기와 환산 금지</td>
+            </tr>
+            <tr>
+              <td><b>Baratza Encore (Original) [가정]</b></td>
+              <td>전동 / 1~40 숫자 다이얼</td>
+              <td>사용자 14 / 제조사 V60 참고 23</td>
+              <td><b>14 (가정 프로필)</b></td>
+              <td><span class="tag tag-user">사용자 실사용(14) + 제조사(23)</span></td>
+              <td>가정 실사용 14 유지, 제조사 V60 시작값 23 별도 보존 (<a href="https://www.baratza.com/en-us/blog/brew-guides/hario-v60-brew-guide" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>Baratza Encore ESP</b></td>
+              <td>전동 / 1~40 다이얼 (21~40 필터)</td>
+              <td>21 ~ 30 (필터 구간 21~40)</td>
+              <td><b>25</b></td>
+              <td><span class="tag tag-mfg">제조사 가이드</span></td>
+              <td>Original 모델과 별도 구분 (<a href="https://www.baratza.com/en-us/blog/brew-guides/hario-v60-brew-guide" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>Comandante C40 MK4</b></td>
+              <td>수동 / 0점 기준 clicks</td>
+              <td>18 ~ 35 clicks</td>
+              <td><b>27 clicks</b></td>
+              <td><span class="tag tag-mfg">제조사 FAQ 범위</span></td>
+              <td>27은 범위 중앙의 앱 시작값 (<a href="https://comandantegrinder.com/pages/faq" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>Timemore Chestnut C2</b></td>
+              <td>수동 / 0점 기준 clicks</td>
+              <td>약 15 ~ 18 clicks</td>
+              <td><b>16 clicks</b></td>
+              <td><span class="tag tag-comm">커뮤니티 참고</span></td>
+              <td>모델 버전 및 영점 관행 확인 필요 (<a href="https://www.browncherry.co.kr/article/%EB%89%B4%EC%8A%A4%EC%9D%B4%EB%B2%A4%ED%8A%B8/2/13497/" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>Timemore Chestnut C3 / C3 Pro</b></td>
+              <td>수동 / 0점 기준 clicks</td>
+              <td>약 13 ~ 18 clicks</td>
+              <td><b>15 clicks</b></td>
+              <td><span class="tag tag-comm">커뮤니티 참고</span></td>
+              <td>하위 모델(C3S/ESP)과 정밀도 차이 유의 (<a href="https://brewratio.coffee/grind-settings" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>1Zpresso K-Ultra</b></td>
+              <td>수동 / 외부 숫자 다이얼 + 세부눈금</td>
+              <td>약 8.0 ~ 9.0</td>
+              <td><b>8.5</b></td>
+              <td><span class="tag tag-comm">참고 범위</span></td>
+              <td>외부 다이얼 숫자 표기 사용, 원시 클릭수 혼용 주의 (<a href="https://brewratio.coffee/grind-settings" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>1Zpresso ZP6 Special</b></td>
+              <td>수동 / 외부 다이얼 (1회전 90클릭)</td>
+              <td>약 4.0 ~ 5.0 (약 40~50 clicks)</td>
+              <td><b>4.5</b></td>
+              <td><span class="tag tag-mfg">기구규격 + 커뮤니티</span></td>
+              <td>푸어오버 전용 설계 (<a href="https://1zpresso.coffee/zp6/" target="_blank" class="ext-link">제조사</a> | <a href="https://brewmark.io/methods/pour-over" target="_blank" class="ext-link">가이드</a>)</td>
+            </tr>
+            <tr>
+              <td><b>KINGrinder K6</b></td>
+              <td>수동 / 0점 기준 clicks (1회전 60클릭)</td>
+              <td>약 90 ~ 120 clicks</td>
+              <td><b>100 clicks</b></td>
+              <td><span class="tag tag-mfg">제조사 차트 참고</span></td>
+              <td>0점 설정 시 과도하게 조이지 말 것 (<a href="https://www.kingrinder.com/_blog" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>Fellow Ode Gen 2</b></td>
+              <td>전동 / 1~11 숫자 다이얼 + 세부눈금</td>
+              <td>소량 5.0 ~ 7.0 (대용량 8~10)</td>
+              <td><b>6.0</b></td>
+              <td><span class="tag tag-mfg">제조사 가이드</span></td>
+              <td>Gen 2 Brew Burrs 기준 (<a href="https://fellowproducts.com/blogs/brew-talks/fellows-take-on-house-blend-by-honey-moon-brew-guide" target="_blank" class="ext-link">레시피</a> | <a href="https://help.fellowproducts.com/hc/en-us/articles/29101533994267-How-should-I-dial-in-my-grinder-when-brewing-with-Aiden-Getting-Started-With-Aiden-Pt-3" target="_blank" class="ext-link">배치 가이드</a>)</td>
+            </tr>
+            <tr>
+              <td><b>Fellow Opus</b></td>
+              <td>전동 / 외부 다이얼 + 내부 미세조절 링</td>
+              <td>약 5.0 ~ 9.0</td>
+              <td><b>6.5 (Single)</b></td>
+              <td><span class="tag tag-mfg">제조사 가이드</span></td>
+              <td>외부 다이얼과 함께 내부 링 위치 기록 필수 (<a href="https://help.fellowproducts.com/hc/en-us/articles/29101533994267-How-should-I-dial-in-my-grinder-when-brewing-with-Aiden-Getting-Started-With-Aiden-Pt-3" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>OXO Brew Conical Burr Grinder</b></td>
+              <td>전동 / 1~15 숫자 다이얼</td>
+              <td>6 ~ 10 (푸어오버/드립)</td>
+              <td><b>8</b></td>
+              <td><span class="tag tag-mfg">제조사 가이드</span></td>
+              <td>1~5 에스프레소, 11~15 프렌치프레스 (<a href="https://www.oxo.com/blog/coffee-and-beverages/how-to-use-the-oxo-brew-conical-burr-grinder" target="_blank" class="ext-link">출처</a>)</td>
+            </tr>
+            <tr>
+              <td><b>Breville / Sage Smart Grinder Pro</b></td>
+              <td>전동 / 1~60 숫자 다이얼</td>
+              <td>종이필터 드립 31 ~ 45</td>
+              <td>범위 표시 (시험 시작점 <b>38</b>)</td>
+              <td><span class="tag tag-mfg">제조사 설명서 범위</span></td>
+              <td>38은 범위 중앙의 시험 초기값 (<a href="https://assets.breville.com/BCG820/BCG820_BSS_USCM_IB_I23_FA_Online.pdf" target="_blank" class="ext-link">설명서 PDF</a>)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= 섹션 8: 차트 해석 · 3D 실사 추출 · 엑셀 백업 ================= -->
+    <section class="section-card" id="sec-8">
+      <div class="section-title">
+        <span>8. SCA 골든컵 차트 · 3D 실사 추출 화면 · 단일 엑셀 강제저장 매뉴얼</span>
+        <span class="section-sub">실측 TDS/EY 공식 및 미측정 추정값 미표시</span>
+      </div>
+
+      <div class="grid-3col">
+        <div class="info-box">
+          <h3>📊 차트 2종 & 실측 TDS/EY 계산</h3>
+          <ul>
+            <li><b>SCA 골든컵 기준:</b> 전통적인 SCAA/SCA 골든컵 목표 영역은 <b>농도(TDS) 1.15~1.35%</b>, <b>추출수율(EY) 18.0~22.0%</b>입니다. (<a href="https://kimcoffee.net/PDF/resources/golden-cup-standard.pdf" target="_blank" class="ext-link">기준 PDF</a> | <a href="https://www.coffearium.org/entries/brewing-control-chart/" target="_blank" class="ext-link">차트 수식</a>)</li>
+            <li><b>실측 공식:</b> <code>EY(%) = TDS(%) × 실제 완성 음료 무게(g) ÷ 원두량(g)</code></li>
+            <li>굴절계 측정 TDS와 실제 완성 음료 무게가 모두 입력된 경우에만 EY를 계산합니다. 미측정 상태에서는 EY/TDS 추정값이나 차트 위치를 표시하지 않습니다.</li>
+          </ul>
+        </div>
+
+        <div class="info-box">
+          <h3>🎥 3D 실사 추출 & 사운드 구분</h3>
+          <ul>
+            <li><b>비이커 글씨 완전 제거:</b> 추출 화면의 드리퍼·서버 위 글씨를 없애고, 상단 HUD와 하단 3D 저울 LED(시간·무게)에 집중했습니다.</li>
+            <li><b>💧 물 붓는 중:</b> 파란색 HUD + 상승하는 3단 차임벨 + <b>물 따르는 ASMR 소리</b>가 재생됩니다.</li>
+            <li><b>✋ 멈춤 · 대기 중:</b> 목표 그램 도달 즉시 하강하는 2단 정지 벨소리와 함께 물소리가 멈추고 <b>따뜻한 황금빛 카페 라운지 배경</b>으로 바뀝니다.</li>
+            <li><b>3단계 음성 길이:</b> 총 추출 시간이 2분 이내(초간결), 3분 이내(중간), 3분 초과(풀 코칭)에 따라 멘트 길이가 자동 조절됩니다.</li>
+          </ul>
+        </div>
+
+        <div class="info-box">
+          <h3>💾 단일 엑셀 강제저장 & 백업</h3>
+          <ul>
+            <li><b>[⭐ 세팅 저장 (+엑셀)] 클릭 시:</b> 추천 이름이 자동 입력되며, 앱 내부 보관함 저장과 동시에 <b>단 1개의 기본 엑셀 파일(<code>마스터_오찬욱_기본레시피.csv</code> 또는 <code>개별링크_[성함]_기본레시피.csv</code>)</b>에 누적되어 강제 자동 다운로드됩니다.</li>
+            <li><b>[📥 백업용 엑셀 저장]:</b> 사용자가 원할 때 날짜가 찍힌 별도 백업 파일을 추가로 내려받습니다.</li>
+            <li><b>불러오기 2종:</b> <code>1) 기본 엑셀 불러오기</code>와 <code>2) 백업용 파일 불러오기</code>로 데이터를 복원합니다. v1.5 CSV의 과거 저항지수 열은 무시하고, 기존의 수치 기록은 측정 여부 확인 불가로 표시합니다.</li>
+            <li>v1.6 CSV에는 분쇄 설정 방식, 그라인더 모델·눈금 또는 일반 분쇄도 단계, 실측 TDS와 음료 무게가 구분되어 저장됩니다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 하단 푸터 및 메인 복귀 버튼 -->
+    <div class="footer-bar">
+      <p style="font-weight:800; color:#212529; margin-bottom:12px;">
+        오찬욱 바리스타 3D 브루잉 다이얼러 v1.6 — 모든 준비가 완료되었습니다.
+      </p>
+      <a href="index.html" class="btn-3d">← 브루잉 다이얼러(메인 화면)로 돌아가기</a>
+    </div>
+
+  </div>
+
+</body>
+</html>
