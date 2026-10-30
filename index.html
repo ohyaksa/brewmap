@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>오찬욱 바리스타 3D 브루잉 다이얼러 v1.65</title>
+  <title>오찬욱 바리스타 3D 브루잉 다이얼러 v1.651</title>
   <style>
     :root {
       --theme-color: #00a1e4;
@@ -921,7 +921,7 @@
     }
 
 
-    /* ================= v1.65 · Modern Sage UI ================= */
+    /* ================= v1.651 · Modern Sage UI ================= */
     :root {
       --theme-color: #78947b;
       --theme-dark: #42634a;
@@ -1039,6 +1039,36 @@
       .dripper-tab { flex:1; justify-content:center; }
     }
 
+
+    /* v1.651: four-step configuration and visible version badge */
+    .version-badge { display:inline-flex; align-items:center; margin-left:5px; padding:3px 7px; border-radius:7px; background:#e8f0e9; color:#42634a; font-size:10px; font-weight:900; letter-spacing:.02em; vertical-align:middle; }
+    .top-selector-bar { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:12px; }
+    .wizard-step { height:100%; min-width:0; }
+    .wizard-step.is-disabled { opacity:.62; }
+    .wizard-step.is-current { border-color:#89a78e; box-shadow:0 0 0 2px rgba(120,148,123,.13),0 7px 24px rgba(38,51,42,.045); }
+    .wizard-step4-content { min-width:0; }
+    #wizard-step-4 .ctrl-box { box-shadow:none; }
+    #wizard-step-4 .ctrl-top { margin-bottom:10px; }
+    #wizard-step-4 .grind-mode-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    #wizard-step-4 .grind-mode-option { min-width:0; }
+    .subsection-title { font-size:14px; font-weight:900; color:#344b39; margin:4px 0 10px; }
+    .subchart-title { font-size:11.5px; font-weight:850; color:#495f4d; margin:0 0 5px; }
+    .brew-profile-panel { border:1px solid #e2eae3; border-radius:14px; padding:13px; margin-top:14px; background:#fbfcfb; min-width:0; }
+    .profile-stat-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+    .profile-charts-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .pour-schedule-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:10px; }
+    .pour-schedule-item { display:grid; grid-template-columns:minmax(84px,auto) 1fr auto; gap:7px; align-items:center; border:1px solid #e4ebe5; border-radius:9px; padding:8px 9px; background:#fff; font-size:10.5px; min-width:0; }
+    .pour-schedule-item strong { color:#42634a; }
+    .pour-schedule-item span { overflow-wrap:anywhere; }
+    .wizard-step button:disabled,.wizard-step select:disabled,.wizard-step input:disabled { opacity:.58; }
+    @media(max-width:700px) {
+      .top-selector-bar { grid-template-columns:minmax(0,1fr); }
+      .profile-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .profile-charts-grid { grid-template-columns:minmax(0,1fr); }
+      .pour-schedule-list { grid-template-columns:minmax(0,1fr); }
+      #wizard-step-4 .grind-mode-options { grid-template-columns:minmax(0,1fr); }
+    }
+
   </style>
 </head>
 <body>
@@ -1085,6 +1115,7 @@
         <div>
           <h1>
             <span id="header-barista-title">오찬욱 바리스타 다이얼러</span>
+            <span class="version-badge" id="app-version">v1.651</span>
             <span id="user-role-badge" class="role-badge badge-guest">게스트</span>
           </h1>
           <div class="subtitle" id="welcome-subtitle">표준 비율 1:16 · 모든 수치는 추천 시작점입니다.</div>
@@ -1102,7 +1133,7 @@
       </div>
     </header>
 
-    <!-- v1.65 단계별 레시피 설정 마법사 -->
+    <!-- v1.651 드리퍼 → 원두 → 레시피 → 분쇄도 4단계 선택 -->
     <div class="top-selector-bar" id="recipe-wizard">
       <section class="wizard-step is-current" id="wizard-step-1">
         <div class="wizard-heading"><span class="wizard-number">01</span><span class="wizard-title">드리퍼</span><span class="wizard-prompt">1. 드리퍼를 선택하세요.</span><button class="help-mini" onclick="showInlineHelp('dripper')" aria-label="드리퍼 도움말">?</button></div>
@@ -1114,13 +1145,13 @@
         <div class="wizard-selection" id="wizard-dripper-selected"></div>
       </section>
 
-      <section class="wizard-step wizard-hidden" id="wizard-step-2" hidden>
+      <section class="wizard-step is-disabled" id="wizard-step-2">
         <div class="wizard-heading"><span class="wizard-number">02</span><span class="wizard-title">원두</span><span class="wizard-prompt">2. 원두 종류를 선택하세요.</span><button class="help-mini" onclick="showInlineHelp('bean')" aria-label="원두 도움말">?</button></div>
         <select id="origin-select" class="compact-select" onchange="onOriginChange()" style="width:min(100%,430px);max-width:100%;"></select>
         <div class="wizard-selection" id="wizard-bean-selected"></div>
       </section>
 
-      <section class="wizard-step wizard-hidden" id="wizard-step-3" hidden>
+      <section class="wizard-step is-disabled" id="wizard-step-3">
         <div class="wizard-heading"><span class="wizard-number">03</span><span class="wizard-title">레시피</span><span class="wizard-prompt">3. 레시피를 선택하세요. (일반 또는 특별 바리스타 모드)</span><button class="help-mini" onclick="showInlineHelp('recipe')" aria-label="레시피 도움말">?</button></div>
         <div class="recipe-type-options" role="radiogroup" aria-label="레시피 유형">
           <label class="recipe-type-option"><input type="radio" name="recipe-type" value="general" onchange="selectRecipeType('general')"> 일반 모드</label>
@@ -1158,6 +1189,49 @@
           <div id="barista-preset-summary" class="barista-note" hidden></div>
         </div>
         <div class="wizard-selection" id="wizard-recipe-selected"></div>
+      </section>
+
+      <section class="wizard-step" id="wizard-step-4">
+        <div class="wizard-heading"><span class="wizard-number">04</span><span class="wizard-title">분쇄도 조절</span><span class="wizard-prompt">4. 그라인더 모델 또는 일반 분쇄도를 선택하세요.</span><button class="help-mini" onclick="showInlineHelp('grind')" aria-label="분쇄 설정 도움말">?</button></div>
+        <div class="wizard-step4-content">
+          <div class="ctrl-box grind-settings-box" id="box-grinder">
+              <div class="ctrl-top">
+                <span class="ctrl-title">분쇄 설정 <button class="help-mini" onclick="showInlineHelp('grind')">?</button></span>
+                <button class="lock-btn" id="lock-grinder" onclick="toggleLock('grinder')">🔓 고정</button>
+              </div>
+              <div class="grind-mode-options" role="radiogroup" aria-label="분쇄 설정 방식">
+                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="registered" checked onchange="onGrinderModeChange()"> 등록된 그라인더 모델 및 실제 눈금</label>
+                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="general" onchange="onGrinderModeChange()"> 일반 분쇄도 5단계 <span class="wizard-prompt">(그라인더 모델을 모를 경우)</span></label>
+              </div>
+
+              <div id="grinder-registered-controls" class="grind-mode-panel" hidden>
+                <div class="ctrl-sub-hint" style="margin:0 0 6px;">사용자 기준 예시: Feima 600N 4.5 · Baratza Encore 14</div>
+                <select id="grinder-select" class="compact-select" style="width:100%; margin-bottom:5px;" onchange="onGrinderChange()"></select>
+                <div class="num-input-row" style="margin-bottom:2px;">
+                  <button type="button" class="step-btn" id="minus-grinder" onclick="stepGrinderDial(-1)">-</button>
+                  <input type="number" id="grinder-dial-num" class="direct-num-input" step="1" value="4.5" onchange="onGrinderDialDirectInput()" />
+                  <span class="unit-txt" id="grinder-unit-txt">눈금</span>
+                  <button type="button" class="step-btn" id="plus-grinder" onclick="stepGrinderDial(1)">+</button>
+                </div>
+                <div class="ctrl-sub-hint">
+                  <span id="grinder-summary-txt">약국 실사용 기준 4.5</span>
+                  <a id="grinder-source-link" href="#" target="_blank" rel="noopener" class="source-link" style="display:none;">출처</a>
+                </div>
+              </div>
+
+              <div id="general-grind-controls" class="grind-mode-panel" hidden>
+                <div class="general-grind-options" role="radiogroup" aria-label="일반 분쇄도 5단계">
+                  <label><input type="radio" name="general-grind-level" value="1"> 1단계 · 매우 굵게</label>
+                  <label><input type="radio" name="general-grind-level" value="2"> 2단계 · 굵게</label>
+                  <label><input type="radio" name="general-grind-level" value="3" checked> 3단계 · 중간 (기본값)</label>
+                  <label><input type="radio" name="general-grind-level" value="4"> 4단계 · 곱게</label>
+                  <label><input type="radio" name="general-grind-level" value="5"> 5단계 · 매우 곱게</label>
+                </div>
+                <div class="ctrl-sub-hint">그라인더 눈금이나 마이크론으로 환산하지 않는 정성적 분류입니다.</div>
+              </div>
+              </div>
+        </div>
+        <div class="wizard-selection" id="wizard-grind-selected"></div>
       </section>
     </div>
 
@@ -1206,7 +1280,7 @@
       <div class="panel">
         <div>
           <div class="panel-title">
-            <span>4. 세팅 조절 (막대 그래프와 ± 버튼)</span>
+            <span>5. 세팅 조절 (막대 그래프와 ± 버튼)</span>
             <button class="lock-all-btn" id="btn-lock-all" onclick="toggleLockAll()">🔓 전체 세팅 고정하기</button>
           </div>
 
@@ -1262,7 +1336,7 @@
             <!-- 4. 목표 추출 시간 -->
             <div class="ctrl-box" id="box-time">
               <div class="ctrl-top">
-                <span class="ctrl-title">4. 목표 시간 (초)</span>
+                <span class="ctrl-title">목표 시간 (초)</span>
                 <button class="lock-btn" id="lock-time" onclick="toggleLock('time')">🔓 고정</button>
               </div>
               <div class="num-input-row">
@@ -1275,43 +1349,7 @@
               <div class="ctrl-sub-hint"><span>막대 5초 단위</span><span id="time-label">3분 35초</span></div>
             </div>
 
-            <!-- 5. 분쇄 설정: 등록 모델 또는 일반 5단계 -->
-            <div class="ctrl-box grind-settings-box" id="box-grinder">
-              <div class="ctrl-top">
-                <span class="ctrl-title">분쇄 설정 <button class="help-mini" onclick="showInlineHelp('grind')">?</button></span>
-                <button class="lock-btn" id="lock-grinder" onclick="toggleLock('grinder')">🔓 고정</button>
-              </div>
-              <div class="grind-mode-options" role="radiogroup" aria-label="분쇄 설정 방식">
-                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="registered" checked onchange="onGrinderModeChange()"> 등록된 그라인더 모델 및 실제 눈금</label>
-                <label class="grind-mode-option"><input type="radio" name="grinder-mode" value="general" onchange="onGrinderModeChange()"> 일반 분쇄도 5단계 <span class="wizard-prompt">(그라인더 모델을 모를 경우)</span></label>
-              </div>
 
-              <div id="grinder-registered-controls" class="grind-mode-panel" hidden>
-                <div class="ctrl-sub-hint" style="margin:0 0 6px;">사용자 기준 예시: Feima 600N 4.5 · Baratza Encore 14</div>
-                <select id="grinder-select" class="compact-select" style="width:100%; margin-bottom:5px;" onchange="onGrinderChange()"></select>
-                <div class="num-input-row" style="margin-bottom:2px;">
-                  <button type="button" class="step-btn" id="minus-grinder" onclick="stepGrinderDial(-1)">-</button>
-                  <input type="number" id="grinder-dial-num" class="direct-num-input" step="1" value="4.5" onchange="onGrinderDialDirectInput()" />
-                  <span class="unit-txt" id="grinder-unit-txt">눈금</span>
-                  <button type="button" class="step-btn" id="plus-grinder" onclick="stepGrinderDial(1)">+</button>
-                </div>
-                <div class="ctrl-sub-hint">
-                  <span id="grinder-summary-txt">약국 실사용 기준 4.5</span>
-                  <a id="grinder-source-link" href="#" target="_blank" rel="noopener" class="source-link" style="display:none;">출처</a>
-                </div>
-              </div>
-
-              <div id="general-grind-controls" class="grind-mode-panel" hidden>
-                <div class="general-grind-options" role="radiogroup" aria-label="일반 분쇄도 5단계">
-                  <label><input type="radio" name="general-grind-level" value="1"> 1단계 · 매우 굵게</label>
-                  <label><input type="radio" name="general-grind-level" value="2"> 2단계 · 굵게</label>
-                  <label><input type="radio" name="general-grind-level" value="3" checked> 3단계 · 중간 (기본값)</label>
-                  <label><input type="radio" name="general-grind-level" value="4"> 4단계 · 곱게</label>
-                  <label><input type="radio" name="general-grind-level" value="5"> 5단계 · 매우 곱게</label>
-                </div>
-                <div class="ctrl-sub-hint">그라인더 눈금이나 마이크론으로 환산하지 않는 정성적 분류입니다.</div>
-              </div>
-              </div>
             </div>
 
           <!-- 실측 TDS(%) 및 실제 완성 음료 무게(g) 입력 바 -->
@@ -1374,6 +1412,28 @@
               </div>
               <canvas id="scaChart" class="chart-canvas" width="360" height="210"></canvas>
             </div>
+          </div>
+          <div class="brew-profile-panel">
+            <div class="subsection-title">④ 추출 프로파일 통계 <button class="help-mini" onclick="showInlineHelp('profile')">?</button></div>
+            <div class="profile-stat-grid">
+              <div class="metric-tile"><small>물 : 원두 비율</small><strong id="profile-ratio">1:16.0</strong></div>
+              <div class="metric-tile"><small>원두 / 총 물 투입량</small><strong id="profile-dose-water">30g / 480g</strong></div>
+              <div class="metric-tile"><small>목표 수온 / 추출 시간</small><strong id="profile-temp-time">95°C / 3:30</strong></div>
+              <div class="metric-tile"><small>푸어 단계 / 바이패스 온수</small><strong id="profile-pour-count">4단계 / 없음</strong></div>
+            </div>
+            <div class="charts-grid profile-charts-grid">
+              <div>
+                <div class="subchart-title">⑤ 설정된 물 붓기 일정 <button class="help-mini" onclick="showInlineHelp('pour')">?</button></div>
+                <canvas id="pourScheduleChart" class="chart-canvas" width="520" height="230" aria-label="설정된 물 붓기 일정 그래프"></canvas>
+                <div class="ctrl-sub-hint">프로그램 일정 기준 누적 투입량입니다. 바이패스 온수는 별도이며 실제 출수량 측정 그래프는 아닙니다.</div>
+              </div>
+              <div>
+                <div class="subchart-title">⑥ 추출 비율 비교 <button class="help-mini" onclick="showInlineHelp('ratio')">?</button></div>
+                <canvas id="ratioChart" class="chart-canvas" width="520" height="230" aria-label="현재 물 원두 비율과 기준 비율 비교 그래프"></canvas>
+                <div class="ctrl-sub-hint">현재 설정한 총 물 투입량 ÷ 원두량을 기준 비율과 비교합니다.</div>
+              </div>
+            </div>
+            <div id="pour-schedule-list" class="pour-schedule-list" aria-live="polite"></div>
           </div>
         </div>
 

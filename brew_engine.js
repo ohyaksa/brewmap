@@ -1,6 +1,6 @@
 /**
  * brew_engine.js
- * 드립 커피 추출 프로그램 작동 엔진 파일 (버전 1.65 수정본)
+ * 드립 커피 추출 프로그램 작동 엔진 파일 (버전 1.651 수정본)
  * - 사용자 인증(마스터 / 지인 모드) 및 권한 관리 안전성 강화
  * - 1줄 2개 배치 조작창 (막대 슬라이더 + 직접 숫자 입력 + 🔒 잠금 시스템)
  * - 7단계 중량 × 4개 추출 모드 실시간 물 투입량 계산
@@ -181,6 +181,12 @@ function populateOriginSelect() {
   const selectEl = document.getElementById("origin-select");
   if (!selectEl) return;
   selectEl.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "원두 종류를 선택하세요";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  selectEl.appendChild(placeholder);
 
   const db = window.ORIGIN_DB || {};
   Object.keys(db).forEach(key => {
@@ -490,6 +496,8 @@ function selectBrewMode(modeKey) {
 }
 
 function onOriginChange() {
+  const originSel = document.getElementById("origin-select");
+  if (!originSel || !originSel.value || !(window.ORIGIN_DB || {})[originSel.value]) return;
   wizardState.bean = true;
   // 원두를 바꾸면 이전 레시피 유형/바리스타 잠금을 해제하고 다시 선택하도록 합니다.
   if (currentBaristaPresetId) clearBaristaPreset(false);
@@ -525,24 +533,36 @@ function refreshWizard() {
   const s1 = document.getElementById("wizard-step-1");
   const s2 = document.getElementById("wizard-step-2");
   const s3 = document.getElementById("wizard-step-3");
-  if (s2) s2.hidden = !wizardState.dripper;
-  if (s3) s3.hidden = !wizardState.bean;
-  [[s1,wizardState.dripper],[s2,wizardState.bean],[s3,wizardState.recipe]].forEach(([el,done]) => {
+  const s4 = document.getElementById("wizard-step-4");
+  // 선택 단계는 항상 보여주고, 이전 단계가 완료되지 않은 입력만 비활성화한다.
+  [s1,s2,s3,s4].forEach(el => { if (el) el.hidden = false; });
+  const currentStep = !wizardState.dripper ? 1 : (!wizardState.bean ? 2 : (!wizardState.recipe ? 3 : 4));
+  [[s1,wizardState.dripper,1],[s2,wizardState.bean,2],[s3,wizardState.recipe,3],[s4,wizardState.recipe,4]].forEach(([el,done,step]) => {
     if (!el) return;
     el.classList.toggle("is-complete", !!done);
-    el.classList.toggle("is-current", !done);
+    el.classList.toggle("is-current", currentStep === step);
+    el.classList.toggle("is-disabled", step === 2 ? !wizardState.dripper : ((step === 3 || step === 4) ? (step === 3 ? !wizardState.bean : !wizardState.recipe) : false));
   });
+  const originSelect = document.getElementById("origin-select");
+  if (originSelect) originSelect.disabled = !wizardState.dripper;
+  document.querySelectorAll('#wizard-step-3 input[name="recipe-type"]').forEach(el => { el.disabled = !wizardState.bean; });
   const dLabel = document.getElementById("wizard-dripper-selected");
-  const originSel = document.getElementById("origin-select");
   const bLabel = document.getElementById("wizard-bean-selected");
   const rLabel = document.getElementById("wizard-recipe-selected");
-  if (dLabel) { dLabel.textContent = `선택됨: ${currentDripperLabel}`; dLabel.classList.toggle("visible", wizardState.dripper); }
-  const bean = originSel && window.ORIGIN_DB ? window.ORIGIN_DB[originSel.value] : null;
-  if (bLabel) { bLabel.textContent = bean ? `선택됨: ${bean.name}` : ""; bLabel.classList.toggle("visible", wizardState.bean && !!bean); }
+  const gLabel = document.getElementById("wizard-grind-selected");
+  const bean = originSelect && window.ORIGIN_DB ? window.ORIGIN_DB[originSelect.value] : null;
+  if (dLabel) { dLabel.textContent = wizardState.dripper ? `선택됨: ${currentDripperLabel}` : "드리퍼를 선택하면 다음 단계가 열립니다."; dLabel.classList.toggle("visible", true); }
+  if (bLabel) { bLabel.textContent = wizardState.bean && bean ? `선택됨: ${bean.name}` : "드리퍼를 먼저 선택해 주세요."; bLabel.classList.toggle("visible", true); }
   if (rLabel) {
-    const msg = currentBaristaPreset ? `선택됨: ${currentBaristaPreset.baristaName} · ${currentBaristaPreset.recipeName}` : (recipeType === "general" ? "선택됨: 일반 모드" : "");
-    rLabel.textContent = msg;
-    rLabel.classList.toggle("visible", wizardState.recipe && !!msg);
+    const msg = currentBaristaPreset ? `선택됨: ${currentBaristaPreset.baristaName} · ${currentBaristaPreset.recipeName}` : (recipeType === "general" ? "선택됨: 일반 모드" : (recipeType === "barista" ? "바리스타 프리셋을 선택해 주세요." : "원두 선택 후 레시피를 선택할 수 있습니다."));
+    rLabel.textContent = msg; rLabel.classList.toggle("visible", true);
+  }
+  if (gLabel) { gLabel.textContent = wizardState.recipe ? "레시피 선택 완료 · 분쇄 설정을 조절할 수 있습니다." : "레시피 선택 후 분쇄 설정이 활성화됩니다."; gLabel.classList.toggle("visible", true); }
+  // 분쇄 메뉴는 화면에 항상 표시하되, 레시피 선택 후 입력할 수 있게 한다.
+  const grinderBox = document.getElementById("box-grinder");
+  if (grinderBox) {
+    if (wizardState.recipe) applyGrinderLockUI();
+    else grinderBox.querySelectorAll("input,select,button").forEach(el => { if (!el.classList.contains("help-mini")) el.disabled = true; });
   }
   const ready = wizardState.dripper && wizardState.bean && wizardState.recipe;
   const settings = document.querySelectorAll("#mainContainer .panel");
@@ -873,6 +893,108 @@ function updateDial() {
 
   updateGrinderSummary();
   drawTimeChart(time, d.themeColor);
+  updateBrewProfileStats();
+}
+
+// ----------------------------------------------------------------------------
+// v1.651: 설정된 물 붓기 일정 및 추출 프로파일 통계
+// ----------------------------------------------------------------------------
+function getAnalyticsPourSchedule() {
+  const dose = parseFloat(document.getElementById("dose-num")?.value) || 30;
+  const totalWater = parseFloat(document.getElementById("water-num")?.value) || 480;
+  const totalTime = parseFloat(document.getElementById("time-num")?.value) || 210;
+
+  if (currentBaristaPreset && Array.isArray(currentBaristaPreset.pourSchedule) && currentBaristaPreset.pourSchedule.length) {
+    const factor = dose / (Number(currentBaristaPreset.coffeeDose) || dose);
+    return currentBaristaPreset.pourSchedule.map((step, index, all) => {
+      const previous = index ? Number(all[index - 1].cumulativeWaterG) : 0;
+      const previousScaled = Math.round(previous * factor);
+      const cumulative = Math.round(Number(step.cumulativeWaterG) * factor);
+      const start = Number(step.startTimeSec ?? step.timeSec ?? 0);
+      const pourEnd = Number(step.endTimeSec ?? (start + 12));
+      const wait = Number(step.waitUntilSec ?? pourEnd);
+      const phase = /bloom/i.test(String(step.phase || "")) ? "뜸들이기" : `${index}차 푸어`;
+      return { name: phase, startSec: start, pourEndSec: Math.max(start + 1, pourEnd), endSec: Math.max(pourEnd, wait), addWater: Number(step.pourAmountG ?? cumulative - previousScaled), cumulativeWaterG: cumulative };
+    });
+  }
+
+  let dripperWater = totalWater;
+  if (currentModeKey === "bypass" && window.calculateBrewModeWater) {
+    const result = window.calculateBrewModeWater(dose, "bypass");
+    dripperWater = Number(result.dripperInputWaterG) || totalWater;
+  }
+  const w1 = Math.min(Math.round(dripperWater * 0.24), Math.round(dose * 2.2));
+  const w2 = Math.round(dripperWater * 0.45);
+  const w3 = Math.round(dripperWater * 0.74);
+  const w4 = dripperWater;
+  const t1 = 0;
+  const t2 = Math.min(40, Math.round(totalTime * 0.20));
+  const t3 = Math.round(totalTime * 0.44);
+  const t4 = Math.round(totalTime * 0.68);
+  const p1 = Math.max(8, Math.round((t2 - t1) * 0.45));
+  const p2 = Math.max(10, Math.round((t3 - t2) * 0.52));
+  const p3 = Math.max(10, Math.round((t4 - t3) * 0.52));
+  const p4 = Math.max(10, Math.round((totalTime - t4) * 0.45));
+  return [
+    { name: "뜸들이기", startSec: t1, pourEndSec: t1 + p1, endSec: t2, addWater: w1, cumulativeWaterG: w1 },
+    { name: "1차 푸어", startSec: t2, pourEndSec: t2 + p2, endSec: t3, addWater: w2 - w1, cumulativeWaterG: w2 },
+    { name: "2차 푸어", startSec: t3, pourEndSec: t3 + p3, endSec: t4, addWater: w3 - w2, cumulativeWaterG: w3 },
+    { name: "마무리 푸어", startSec: t4, pourEndSec: t4 + p4, endSec: totalTime, addWater: w4 - w3, cumulativeWaterG: w4 }
+  ];
+}
+
+function updateBrewProfileStats() {
+  const dose = parseFloat(document.getElementById("dose-num")?.value) || 30;
+  const water = parseFloat(document.getElementById("water-num")?.value) || 480;
+  const temp = parseFloat(document.getElementById("temp-num")?.value) || 95;
+  const time = parseFloat(document.getElementById("time-num")?.value) || 210;
+  const ratio = water / dose;
+  const result = currentModeKey === "bypass" && window.calculateBrewModeWater
+    ? window.calculateBrewModeWater(dose, "bypass") : null;
+  const schedule = getAnalyticsPourSchedule();
+  const stats = {
+    "profile-ratio": `1:${ratio.toFixed(1)}`,
+    "profile-dose-water": `${dose}g / ${water}g`,
+    "profile-temp-time": `${temp.toFixed(1)}°C / ${formatMMSS(time)}`,
+    "profile-pour-count": `${schedule.length}단계 / ${result ? `${Number(result.bypassHotWaterG || 0)}g 온수` : "없음"}`
+  };
+  Object.entries(stats).forEach(([id,value]) => { const el=document.getElementById(id); if(el) el.textContent=value; });
+  drawPourScheduleChart(schedule, time, water);
+  drawRatioChart(ratio);
+  const list=document.getElementById("pour-schedule-list");
+  if (list) {
+    list.innerHTML = schedule.map((stage,index) => `<div class="pour-schedule-item"><strong>${index+1}. ${stage.name}</strong><span>${formatMMSS(stage.startSec)}–${formatMMSS(stage.endSec)} · +${Math.round(stage.addWater)}g</span><span>누적 ${Math.round(stage.cumulativeWaterG)}g</span></div>`).join("");
+  }
+}
+
+function drawPourScheduleChart(schedule, targetTime, totalWater) {
+  const canvas=document.getElementById("pourScheduleChart"); if(!canvas) return;
+  const ctx=canvas.getContext("2d"), W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const left=42,right=16,top=20,bottom=34,plotW=W-left-right,plotH=H-top-bottom;
+  const maxTime=Math.max(60, Math.ceil(Math.max(targetTime,...schedule.map(s=>s.endSec))/60)*60);
+  const maxWater=Math.max(50,totalWater);
+  ctx.font="10px sans-serif"; ctx.fillStyle="#77847a"; ctx.textAlign="right";
+  for(let i=0;i<=4;i++){const grams=maxWater*i/4,y=top+plotH-(plotH*i/4);ctx.fillText(`${Math.round(grams)}g`,left-6,y+3);ctx.strokeStyle="#e9eee9";ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(W-right,y);ctx.stroke();}
+  ctx.textAlign="center";
+  const ticks=6;
+  for(let i=0;i<=ticks;i++){const sec=maxTime*i/ticks,x=left+plotW*i/ticks;ctx.fillText(`${Math.round(sec)}s`,x,H-9);}
+  const points=[{time:0,water:0},...schedule.map(s=>({time:s.pourEndSec,water:s.cumulativeWaterG}))];
+  ctx.beginPath();ctx.strokeStyle="#5f8067";ctx.lineWidth=3;
+  points.forEach((p,i)=>{const x=left+Math.min(maxTime,p.time)/maxTime*plotW,y=top+plotH-Math.min(maxWater,p.water)/maxWater*plotH;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
+  points.slice(1).forEach((p,i)=>{const x=left+Math.min(maxTime,p.time)/maxTime*plotW,y=top+plotH-Math.min(maxWater,p.water)/maxWater*plotH;ctx.beginPath();ctx.fillStyle="#5f8067";ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();ctx.fillStyle="#47664d";ctx.font="bold 9px sans-serif";ctx.textAlign="left";ctx.fillText(`${Math.round(p.water)}g`,Math.min(W-right-30,x+5),Math.max(top+10,y-8));});
+  const tx=left+Math.min(maxTime,targetTime)/maxTime*plotW;ctx.beginPath();ctx.setLineDash([4,4]);ctx.strokeStyle="#248bd5";ctx.lineWidth=2;ctx.moveTo(tx,top);ctx.lineTo(tx,top+plotH);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle="#248bd5";ctx.font="bold 9px sans-serif";ctx.textAlign="center";ctx.fillText("목표",tx,top-6);
+}
+
+function drawRatioChart(currentRatio) {
+  const canvas=document.getElementById("ratioChart"); if(!canvas) return;
+  const ctx=canvas.getContext("2d"),W=canvas.width,H=canvas.height;ctx.clearRect(0,0,W,H);
+  const values=[12,14,16,18],left=48,right=20,top=22,bottom=34,plotW=W-left-right,rowH=(H-top-bottom)/values.length;
+  const max=20;ctx.font="10px sans-serif";ctx.textBaseline="middle";
+  values.forEach((value,index)=>{const y=top+index*rowH+7;ctx.fillStyle="#596b5d";ctx.textAlign="right";ctx.fillText(`1:${value}`,left-9,y+5);ctx.fillStyle="#edf2ed";ctx.fillRect(left,y,plotW,12);ctx.fillStyle="#9db3a0";ctx.fillRect(left,y,plotW*value/max,12);});
+  const currentY=top+rowH*3+7;ctx.fillStyle="#a77b43";ctx.fillRect(left,currentY+15,plotW*Math.max(0,Math.min(max,currentRatio))/max,12);ctx.fillStyle="#805b2d";ctx.textAlign="left";ctx.fillText(`현재 설정 1:${currentRatio.toFixed(1)}`,left,currentY+39);
+  ctx.fillStyle="#7b897e";ctx.textAlign="center";ctx.fillText("참고 비율 비교 (실제 추출 품질 점수 아님)",W/2,H-7);
 }
 
 // ----------------------------------------------------------------------------
@@ -1383,9 +1505,9 @@ function loadRecipeToDial(id) {
 
 
 // ============================================================================
-// v1.65 도움말 · 단계 선택 · 인증 세션
+// v1.651 도움말 · 단계 선택 · 인증 세션
 // ============================================================================
-const MASTER_SESSION_KEY = "brewmap_master_session_v165";
+const MASTER_SESSION_KEY = "brewmap_master_session_v1651";
 const MASTER_SESSION_DAYS = 10;
 function initMasterSession() {
   try {
@@ -1415,7 +1537,10 @@ function showInlineHelp(topic) {
     metrics: ["수율(EY)과 농도(TDS)", "SCA 참고 목표 범위와 실측값을 분리해서 표시합니다. 검증된 개인별 예측 모델은 포함하지 않으며, 실제 EY는 굴절계 TDS와 실제 완성 음료 무게가 모두 있어야 계산할 수 있습니다."],
     flavor: ["향미 평가", "산미·단맛·쓴맛은 사용자가 실제로 시음한 뒤 0~5점으로 기록합니다. 설정값만으로 향미 점수를 예측하지 않습니다."],
     extraction: ["시간별 성분 용출 개념도", "시간축에 따른 성분 용출 경향을 설명하는 개념 곡선입니다. 특정 원두의 실측 화학 분석 데이터가 아니며 목표 시간선은 현재 레시피의 목표 시간입니다."],
-    sca: ["SCA 골든컵 차트", "참고 목표 영역은 TDS 1.15~1.35%, EY 18~22%로 표시합니다. 개인 취향이나 모든 추출 방식에 대한 절대적 품질 판정은 아닙니다."]
+    sca: ["SCA 골든컵 차트", "참고 목표 영역은 TDS 1.15~1.35%, EY 18~22%로 표시합니다. 개인 취향이나 모든 추출 방식에 대한 절대적 품질 판정은 아닙니다."],
+    profile: ["추출 프로파일 통계", "현재 설정한 원두량·총 물 투입량·비율·수온·목표 시간·푸어 단계 수를 요약합니다. 실측 추출 성능 통계와는 구분합니다."],
+    pour: ["설정된 물 붓기 일정", "일반 모드는 앱의 안내 타이밍 규칙을, 바리스타 모드는 저장된 프리셋의 물 붓기 일정을 표시합니다. 실제 주전자 출수량을 센서로 측정한 기록은 아닙니다."],
+    ratio: ["추출 비율 비교", "현재 총 물 투입량과 원두량의 비율을 1:12, 1:14, 1:16, 1:18 참고 비율과 비교합니다. 비율만으로 맛이나 수율을 예측하지 않습니다."]
   };
   const item = help[topic] || ["도움말", "관련 기능의 설명을 준비 중입니다."];
   const title = document.getElementById("inlineHelpTitle");
