@@ -1,0 +1,51 @@
+BREWMAP v1.652 — 테스트 결과 보고서
+테스트 일자: 2026-10-30
+
+1. 정적 파일 및 구문 검사
+- brew_engine.js: node --check 통과
+- coffee_recipes.js: node --check 통과
+- index.html: BeautifulSoup 파싱 통과
+- index.html ID 검사: 154개 ID, 중복 없음
+- Wizard 1~4 단계 모두 HTML에 존재하며 초기 표시(hidden 아님) 확인
+- 바리스타 프리셋 설명 영역이 4단계 Wizard 바깥/아래에 배치된 것 확인
+- 추출 후 평가 패널 및 3개 관능평가 슬라이더 존재 확인
+- coffee_recipes.js / brew_engine.js 상대경로 파일 존재 확인
+
+2. 데이터 무결성
+- 원두: 24종
+- 드리퍼: 3종 (Blue Bottle / Hario V60 / Kalita Wave)
+- 공통 추출 모드: 4종
+- 원두 중량 프리셋: 7종
+- 바리스타 프리셋: 6종
+- 그라인더: 13종
+- Feima 600N 사용자 확인 눈금: 4.5 보존
+- Baratza Encore Original 사용자 확인 눈금: 14 보존
+- 과거 v1.5 grind 필드를 실제 그라인더 눈금으로 잘못 변환하지 않는 것 확인
+
+3. 계산 및 저장 테스트 (Node VM 모의 DOM / localStorage)
+- 실측 EY 예제: 20g 원두, TDS 1.30%, 실제 음료량 200g → EY 13.00%
+- 예상값 예제: 20g / 물 320g / 210초 / 95°C → 예상 EY 약 19.76%, 예상 TDS 약 1.314%
+- 예상값은 보정된 과학적 예측 모델이 아닌 화면용 휴리스틱이며 실제값과 다를 수 있다는 고지 확인
+- 관능평가 0점이 미평가와 구분되어 저장되는 것 확인
+- 평가 기록 localStorage 저장 및 수동 레시피 저장 시 평가 ID/평가 점수 연결 확인
+- 새 CSV: 헤더 27열, 데이터 행 27열 일치 확인
+- 새 CSV 내보내기/가져오기 왕복 후 0점 및 tastingRecordId 보존 확인
+- v1.5 형식 CSV 가져오기 확인
+
+4. 바리스타 및 3D 시각 로직 테스트
+- 6개 바리스타 프리셋 정보와 YouTube URL/검색 URL 생성 확인
+- 직접 영상 링크: James Hoffmann, Tetsu Kasuya, Lance Hedrick, George Jinyang Peng, 박준성
+- Scott Rao: 레시피 일치 영상의 불확실성을 고려해 YouTube 검색 링크 제공
+- Blue Bottle / Hario / Kalita 각각 draw3DScene() 호출 시 예외 없이 실행되는 smoke test 통과
+- dose 반영 bed-height, Bloom 최대 swell, 후속 단계별 swell 감소, 배수 중앙 함몰의 렌더링 로직 존재 확인
+
+5. 확인이 필요한 제한
+- 실제 Chromium 브라우저에서의 통합/시각 검증은 실행 환경의 브라우저 접근 제한으로 완료하지 못함. 따라서 위 결과는 정적 검사 및 Node VM 로직 테스트 결과이며 실제 GitHub Pages 배포 검증이 아님.
+- 예상 EY/TDS는 실험 자료로 보정된 추출 예측 모델이 아니라 단순 휴리스틱임. 참고값으로만 사용하고 실제 측정과 구분해야 함.
+- 3D 커피층 팽창/중앙 함몰은 레시피 단계 기반 개념 애니메이션이며 유체·가스 거동의 물리 시뮬레이션이 아님.
+- 마스터 10일 인증은 동일 브라우저의 localStorage 기준. 물리적 기기의 서로 다른 브라우저 간 인증 공유는 서버 인증/기기 등록 기능 없이는 구현되지 않음.
+- 추출/관능평가 자동 저장은 현재 브라우저 localStorage에 저장되며 서버로 전송되지 않음.
+
+6. 배포
+- index.html, coffee_recipes.js, brew_engine.js, help.html은 GitHub 저장소 최상위 폴더에 함께 업로드해야 함.
+- README.md와 TEST_REPORT_v1.652.txt는 문서 파일임.

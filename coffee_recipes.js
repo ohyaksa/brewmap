@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * coffee_recipes.js — [v1.651 compatible data / Part 1]
+ * coffee_recipes.js — [v1.652 compatible data / Part 1]
  * 드립 커피 추출 프로그램용 원두별 레시피 · 드리퍼 프로파일 · 추출 모드 및 그라인더 데이터
  * 기준일: 2026-10-30
  *
@@ -1278,9 +1278,8 @@ const BARISTA_PRESETS = [
     },
     sourceUrl: "https://www.hario-europe.com/blogs/hario-community/v60-ambassadors-tetsu-kasuya",
     sourceUrls: [
+      "https://www.youtube.com/watch?v=lJNPp-onikk",
       "https://www.hario-europe.com/blogs/hario-community/v60-ambassadors-tetsu-kasuya",
-      "https://www.youtube.com/watch?v=123zLI3JoRQ",
-      "https://www.youtube.com/watch?v=Gr-QoaJERiw",
       "https://coffeemaster.app/recipes/tetsu-kasuya-46-method"
     ],
     sourceType: "barista_original_recipe",
@@ -1383,6 +1382,7 @@ const BARISTA_PRESETS = [
     },
     sourceUrl: "https://sprudge.com/how-to-brew-coffee-like-the-2025-world-brewers-cup-champion-338576.html",
     sourceUrls: [
+      "https://www.youtube.com/watch?v=qmCtGAODMdg",
       "https://sprudge.com/how-to-brew-coffee-like-the-2025-world-brewers-cup-champion-338576.html"
     ],
     sourceType: "competition_barista_recipe",
@@ -1418,6 +1418,7 @@ const BARISTA_PRESETS = [
     },
     sourceUrl: "https://omydrip.bizplano.com/r/park-junseong-kbrc-2026",
     sourceUrls: [
+      "https://www.youtube.com/watch?v=s-FhjBY_Mh0",
       "https://omydrip.bizplano.com/r/park-junseong-kbrc-2026"
     ],
     sourceType: "secondary_summary_from_demonstration",
@@ -1983,7 +1984,7 @@ function validateCoffeeRecipesData() {
 window.validateCoffeeRecipesData = validateCoffeeRecipesData;
 
 const CoffeeRecipesData = {
-  version: "2026-10-29-v1",
+  version: "2026-10-30-v1.652",
   WEIGHTS: WEIGHTS,
   BREW_MODES: BREW_MODES,
   BREW_MODE_TABLE: BREW_MODE_TABLE,

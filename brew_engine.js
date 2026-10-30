@@ -1,12 +1,12 @@
 /**
  * brew_engine.js
- * 드립 커피 추출 프로그램 작동 엔진 파일 (버전 1.651 수정본)
+ * BREWMAP 3D Coffee Brewing Studio engine (v1.652)
  * - 사용자 인증(마스터 / 지인 모드) 및 권한 관리 안전성 강화
  * - 1줄 2개 배치 조작창 (막대 슬라이더 + 직접 숫자 입력 + 🔒 잠금 시스템)
  * - 7단계 중량 × 4개 추출 모드 실시간 물 투입량 계산
  * - 두 가지 분쇄 설정 방식(등록 모델 / 일반 5단계)
- * - 실측 TDS/EY 및 SCA 골든컵 차트(미측정 추정값 미표시)
- * - 3D 실사 추출 애니메이션, 물소리 ASMR 효과음, 3단계 음성 안내
+ * - 참고용 예상 TDS/EY, 사용자 실측 TDS/EY 및 SCA 골든컵 차트 분리 표시
+ * - 투명 드리퍼·커피층 팽창/배수 개념형 3D 추출 애니메이션, ASMR 및 음성 안내
  * - 앱 내부 저장 + 단일 기본 엑셀(.csv) 자동 강제 저장 및 백업·복원 시스템
  */
 
@@ -24,9 +24,12 @@ let currentBaristaPreset = null;
 let prePresetDripper = null;
 let prePresetDripperLabel = null;
 let recipeType = null;
-let wizardState = { dripper: false, bean: false, recipe: false };
+let wizardState = { dripper: false, bean: false, recipe: false, grind: false };
 let presetLockedFields = new Set();
 let brewCompletionPromptShown = false;
+let currentBrewSessionId = null;
+let latestTastingRecord = null;
+let tastingSkipped = false;
 let uploadMode = "default";
 
 // 세팅 고정(잠금) 상태 객체
@@ -75,6 +78,7 @@ window.addEventListener("DOMContentLoaded", () => {
     applyOriginMatrix();
     updateFlavorChart();
     renderRecipeBoard();
+    renderTastingHistorySummary();
   } catch (err) {
     console.error("초기화 중 오류 발생:", err);
   }
@@ -142,8 +146,8 @@ function completeLogin(masterFlag, nameStr, persistMaster = true) {
       roleBadge.textContent = "👑 마스터 모드";
       roleBadge.className = "role-badge badge-master";
     }
-    if (headerTitle) headerTitle.textContent = "오찬욱 바리스타 마스터 다이얼러";
-    if (subTitle) subTitle.textContent = "오찬욱 바리스타님, 환영합니다! 모든 사용자의 레시피를 열람하고 지인 초대 링크를 만들 수 있습니다.";
+    if (headerTitle) headerTitle.textContent = "BREWMAP";
+    if (subTitle) subTitle.textContent = "3D Coffee Brewing Studio · 모든 사용자의 레시피를 관리하고 지인 초대 링크를 발급할 수 있습니다.";
     if (inviteBtn) inviteBtn.style.display = "inline-block";
     if (boardTitle) boardTitle.textContent = "👑 마스터 통합 레시피 보관함 (전체 사용자 열람)";
     if (fileInfo) fileInfo.textContent = "저장 시 [마스터_오찬욱_기본레시피.csv] 단일 파일에 누적 강제 저장됩니다.";
@@ -152,8 +156,8 @@ function completeLogin(masterFlag, nameStr, persistMaster = true) {
       roleBadge.textContent = `☕ ${currentUserName} 바리스타`;
       roleBadge.className = "role-badge badge-guest";
     }
-    if (headerTitle) headerTitle.textContent = `${currentUserName} 님의 브루잉 다이얼러`;
-    if (subTitle) subTitle.textContent = `${currentUserName} 님, 환영합니다! 드리퍼에 [${currentUserName} 바리스타] 전용 명패가 각인되었습니다.`;
+    if (headerTitle) headerTitle.textContent = "BREWMAP";
+    if (subTitle) subTitle.textContent = `${currentUserName} 님, 환영합니다! 나만의 브루잉 레시피를 설정하고 기록해 보세요.`;
     if (inviteBtn) inviteBtn.style.display = "none";
     if (boardTitle) boardTitle.textContent = `📔 ${currentUserName} 님의 전용 레시피 보관함`;
     if (fileInfo) fileInfo.textContent = `저장 시 [개별링크_${currentUserName}_기본레시피.csv] 단일 파일에 누적 강제 저장됩니다.`;
@@ -161,6 +165,7 @@ function completeLogin(masterFlag, nameStr, persistMaster = true) {
 
   applyOriginMatrix();
   renderRecipeBoard();
+  renderTastingHistorySummary();
 }
 
 function createInviteLink() {
@@ -343,12 +348,21 @@ function updateGrinderSummary() {
 
 function onGrinderModeChange() {
   const mode = getSelectedGrinderMode();
+  if (wizardState && wizardState.recipe) wizardState.grind = true;
   const registered = document.getElementById("grinder-registered-controls");
   const general = document.getElementById("general-grind-controls");
   if (registered) registered.hidden = mode !== "registered";
   if (general) general.hidden = mode !== "general";
   applyGrinderLockUI();
   updateGrinderSummary();
+  if (wizardState && document.getElementById("wizard-step-4")) refreshWizard();
+}
+
+function onGeneralGrindLevelChange() {
+  wizardState.grind = true;
+  updateGrinderSummary();
+  refreshWizard();
+  updateDial();
 }
 
 function stepControl(field, delta) {
@@ -447,6 +461,8 @@ function onGrinderChange() {
     }
   }
   updateGrinderSummary();
+  if (wizardState && wizardState.recipe) wizardState.grind = true;
+  if (document.getElementById("wizard-step-4") && wizardState?.recipe) refreshWizard();
 }
 
 // ============================================================================
@@ -505,6 +521,7 @@ function onOriginChange() {
   currentBaristaPreset = null;
   recipeType = null;
   wizardState.recipe = false;
+  wizardState.grind = false;
   document.querySelectorAll('input[name="recipe-type"]').forEach(el => { el.checked = false; });
   const generalOptions = document.getElementById("general-recipe-options");
   const baristaOptions = document.getElementById("barista-recipe-options");
@@ -537,7 +554,7 @@ function refreshWizard() {
   // 선택 단계는 항상 보여주고, 이전 단계가 완료되지 않은 입력만 비활성화한다.
   [s1,s2,s3,s4].forEach(el => { if (el) el.hidden = false; });
   const currentStep = !wizardState.dripper ? 1 : (!wizardState.bean ? 2 : (!wizardState.recipe ? 3 : 4));
-  [[s1,wizardState.dripper,1],[s2,wizardState.bean,2],[s3,wizardState.recipe,3],[s4,wizardState.recipe,4]].forEach(([el,done,step]) => {
+  [[s1,wizardState.dripper,1],[s2,wizardState.bean,2],[s3,wizardState.recipe,3],[s4,wizardState.grind,4]].forEach(([el,done,step]) => {
     if (!el) return;
     el.classList.toggle("is-complete", !!done);
     el.classList.toggle("is-current", currentStep === step);
@@ -557,7 +574,7 @@ function refreshWizard() {
     const msg = currentBaristaPreset ? `선택됨: ${currentBaristaPreset.baristaName} · ${currentBaristaPreset.recipeName}` : (recipeType === "general" ? "선택됨: 일반 모드" : (recipeType === "barista" ? "바리스타 프리셋을 선택해 주세요." : "원두 선택 후 레시피를 선택할 수 있습니다."));
     rLabel.textContent = msg; rLabel.classList.toggle("visible", true);
   }
-  if (gLabel) { gLabel.textContent = wizardState.recipe ? "레시피 선택 완료 · 분쇄 설정을 조절할 수 있습니다." : "레시피 선택 후 분쇄 설정이 활성화됩니다."; gLabel.classList.toggle("visible", true); }
+  if (gLabel) { gLabel.textContent = wizardState.grind ? `선택됨: ${getSelectedGrinderMode() === "registered" ? "등록 그라인더 · " + (document.getElementById("grinder-select")?.selectedOptions?.[0]?.textContent || "모델") : "일반 분쇄도 " + getSelectedGeneralGrindLevel() + "단계"}` : (wizardState.recipe ? "분쇄 방식을 선택하거나 기본 그라인더를 확인해 주세요." : "레시피 선택 후 분쇄 설정이 활성화됩니다." ); gLabel.classList.toggle("visible", true); }
   // 분쇄 메뉴는 화면에 항상 표시하되, 레시피 선택 후 입력할 수 있게 한다.
   const grinderBox = document.getElementById("box-grinder");
   if (grinderBox) {
@@ -633,6 +650,8 @@ function selectRecipeType(type) {
     btn.disabled = type !== "general" || isAllLocked;
   });
   if (type === "general") {
+    const profileCard = document.getElementById("barista-preset-summary");
+    if (profileCard) profileCard.hidden = true;
     const presetSel = document.getElementById("preset-select");
     if (presetSel) presetSel.value = "common_mode";
     currentModeKey = "standard";
@@ -640,13 +659,35 @@ function selectRecipeType(type) {
     if (standard) standard.classList.add("active");
     ["strong", "light", "bypass"].forEach(m => document.getElementById("mbtn-"+m)?.classList.remove("active"));
     wizardState.recipe = true;
+    wizardState.grind = true; // 등록 그라인더(기본 선택)가 이미 선택되어 있으므로 4단계 설정 완료 처리
     applyOriginMatrix();
   } else {
     wizardState.recipe = false;
+    wizardState.grind = false;
     const presetSel = document.getElementById("preset-select");
     if (presetSel) presetSel.value = "common_mode";
   }
   refreshWizard();
+}
+
+const BARISTA_PROFILE_INFO = {
+  hoffmann_1cup_v60: { description: "추출 변수를 이해하고 재현성 있는 한 잔을 만드는 교육형 브루잉 접근입니다.", focus: "V60 1인분, 블루밍 후 단계별 푸어와 가벼운 스월" },
+  kasuya_4_6_method: { description: "2016 월드 브루어스 컵 우승으로 널리 알려진 4:6 메서드입니다.", focus: "초반 물 배분으로 산미·단맛의 인상을 조절하고, 후반 푸어로 농도감을 다루는 방식" },
+  hedrick_v60_4pour: { description: "분쇄 입도, 물줄기, 교반과 추출 효율을 실험적으로 다루는 브루잉 접근입니다.", focus: "여러 번의 푸어와 스월을 활용하는 V60 4-pour" },
+  scott_rao_v60: { description: "균일한 베드와 일관된 추출을 중시하는 스페셜티 커피 교육자의 레시피입니다.", focus: "블루밍, 낮은 교반의 메인 푸어, 스핀을 통한 베드 정돈" },
+  george_peng_wbrc_2025: { description: "2025 World Brewers Cup 우승 레시피를 참고한 특수 도구 조건부 프리셋입니다.", focus: "Solo Dripper와 Melodrip, 마지막 단계의 낮은 수온을 활용" },
+  park_junseong_kbrc_2026_switch: { description: "2026 코리아 브루어스컵 시연 기반으로 정리된 Hario Switch 하이브리드 프리셋입니다.", focus: "스위치 밸브를 활용한 여과와 침지 단계 조합" }
+};
+
+function getBaristaProfileInfo(preset) {
+  return BARISTA_PROFILE_INFO[preset?.id] || { description: "해당 바리스타 프리셋의 원본 레시피를 기준으로 구성했습니다.", focus: preset?.grindGuidance || "원본 푸어 일정 준수" };
+}
+
+function getBaristaYoutubeUrl(preset) {
+  const direct = (preset?.sourceUrls || []).find(url => /youtube\.com\/watch|youtu\.be\//i.test(url));
+  if (direct) return direct;
+  const query = `${preset?.baristaName || "coffee brewer"} ${preset?.recipeName || "pour over recipe"}`;
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
 }
 
 function onPresetSelectChange() {
@@ -658,10 +699,13 @@ function onPresetSelectChange() {
     currentBaristaPreset = null;
     recipeType = "barista";
     wizardState.recipe = false;
+    wizardState.grind = false;
     const generalOptions = document.getElementById("general-recipe-options");
     const baristaOptions = document.getElementById("barista-recipe-options");
     if (generalOptions) generalOptions.hidden = true;
     if (baristaOptions) baristaOptions.hidden = false;
+    const profileCard = document.getElementById("barista-preset-summary");
+    if (profileCard) profileCard.hidden = true;
     refreshWizard();
     return;
   }
@@ -680,6 +724,7 @@ function onPresetSelectChange() {
   currentModeKey = "barista";
   recipeType = "barista";
   wizardState.recipe = true;
+  wizardState.grind = true; // 프리셋 적용 시 현재 선택된 분쇄 방식이 유지됨
   presetLockedFields = new Set(["dripper", "dose", "water", "temp", "time", "mode"]);
 
   // 프리셋의 드리퍼가 기본 3종이면 그대로 선택. 특수 장비는 허위로 기본 드리퍼에 치환하지 않고 이름을 따로 명시합니다.
@@ -724,8 +769,14 @@ function onPresetSelectChange() {
   const summary = document.getElementById("barista-preset-summary");
   if (summary) {
     summary.hidden = false;
-    const special = preset.requiresSpecialEquipment ? " · 특수 장비가 필요합니다." : "";
-    summary.textContent = `${preset.baristaName} · ${preset.recipeName} / 원본 ${preset.coffeeDose}g : ${preset.waterAmount}g · ${preset.grindGuidance}${special}`;
+    const profile = getBaristaProfileInfo(preset);
+    const safe = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
+    const ytUrl = getBaristaYoutubeUrl(preset);
+    const hasDirectYoutube = (preset.sourceUrls || []).some(url => /youtube\.com\/watch|youtu\.be\//i.test(url));
+    const youtubeLabel = hasDirectYoutube ? "▶ 관련 YouTube 영상 보기" : "▶ YouTube에서 관련 영상 찾기";
+    const special = preset.requiresSpecialEquipment ? "특수 장비 전용 프리셋입니다. 일반 드리퍼 그림은 실제 장비를 대체하는 표현이 아닙니다." : "";
+    summary.classList.add("barista-profile-card");
+    summary.innerHTML = `<strong>${safe(preset.baristaName)} · ${safe(preset.recipeName)}</strong><p>${safe(profile.description)}</p><p><b>추출 포인트:</b> ${safe(profile.focus)}</p><p><b>원본 세팅:</b> ${preset.coffeeDose}g / ${preset.waterAmount}g · ${Number(preset.temperature?.recommendedC || 0).toFixed(1)}°C · ${safe(preset.grindGuidance)}</p>${special ? `<p class="profile-warning">⚠️ ${safe(special)}</p>` : ""}<div class="barista-profile-links"><a href="${safe(ytUrl)}" target="_blank" rel="noopener noreferrer">${youtubeLabel}</a>${preset.sourceUrl ? `<a href="${safe(preset.sourceUrl)}" target="_blank" rel="noopener noreferrer">원본 레시피·출처</a>` : ""}</div>`;
   }
   const diagTitle = document.getElementById("diag-title");
   const diagDesc = document.getElementById("diag-desc");
@@ -804,6 +855,23 @@ function formatMMSS(sec) {
   return `${sign}${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
 }
 
+function getEstimatedBrewMetrics(doseArg, waterArg, timeArg) {
+  const dose = Math.max(1, Number(doseArg) || 30);
+  const water = Math.max(1, Number(waterArg) || 480);
+  const time = Math.max(1, Number(timeArg) || 210);
+  const temp = Number(document.getElementById("temp-num")?.value) || 95;
+  const ratio = water / dose;
+  const grindMode = getSelectedGrinderMode();
+  const grindLevel = getSelectedGeneralGrindLevel();
+  // 검증된 예측 모델이 아닌 화면용 참고 휴리스틱입니다. 그라인더 클릭/마이크론은 환산하지 않습니다.
+  const grindOffset = grindMode === "general" ? (grindLevel - 3) * 0.22 : 0;
+  const ey = Math.max(16, Math.min(23, 19.5 + (temp - 93) * 0.04 + (time - 180) * 0.006 + (16 - ratio) * 0.12 + grindOffset));
+  // 예상 음료량은 총 투입수량의 94%라는 단순 가정입니다. 실제 배수·보유수량을 측정한 값이 아닙니다.
+  const assumedBeverageMass = water * 0.94;
+  const tds = ey * dose / Math.max(1, assumedBeverageMass);
+  return { ey, tds, eyMargin: 1.8, tdsMargin: 0.15, assumedBeverageMass };
+}
+
 function updateDial() {
   const d = (window.DRIPPERS || {})[currentDripper] || { themeColor: "#00a1e4", themeDark: "#0077ac" };
   const dose = parseFloat(document.getElementById("dose-num").value) || 30;
@@ -842,7 +910,13 @@ function updateDial() {
     }
   }
 
-  // 실측값이 모두 있을 때만 EY를 계산한다. 미측정값은 임의 추정하지 않는다.
+  // 레시피 설정에 근거한 참고용 예상값과 실측값을 분리해 표시합니다.
+  const estimated = getEstimatedBrewMetrics(dose, water, time);
+  const estimatedEyEl = document.getElementById("analysis-estimated-ey");
+  const estimatedTdsEl = document.getElementById("analysis-estimated-tds");
+  if (estimatedEyEl) estimatedEyEl.textContent = `약 ${estimated.ey.toFixed(1)}% (±${estimated.eyMargin.toFixed(1)})`;
+  if (estimatedTdsEl) estimatedTdsEl.textContent = `약 ${estimated.tds.toFixed(2)}% (±${estimated.tdsMargin.toFixed(2)})`;
+
   const measuredTdsInput = document.getElementById("measured-tds");
   const measuredBevInput = document.getElementById("measured-bev");
   const measuredEyResult = document.getElementById("measured-ey-result");
@@ -862,23 +936,22 @@ function updateDial() {
   if (measured.isMeasured) {
     const ey = measured.calculatedEY_percent;
     const tds = measured.measuredTDS_percent;
-    if (eyVal) eyVal.textContent = `실측 EY ${ey.toFixed(2)}% · TDS ${tds.toFixed(2)}%`;
-    if (tdsSub) tdsSub.textContent = "굴절계 TDS와 실제 완성 음료 무게를 사용한 계산값";
-    if (measuredEyResult) measuredEyResult.textContent = `[실측 계산] EY: ${ey.toFixed(2)}% · TDS: ${tds.toFixed(2)}%`;
+    if (eyVal) eyVal.textContent = `예상 ${estimated.ey.toFixed(1)}% / 실측 ${ey.toFixed(2)}% EY`;
+    if (tdsSub) tdsSub.textContent = `예상 TDS ${estimated.tds.toFixed(2)}% · 실측 TDS ${tds.toFixed(2)}% · 실제 측정값을 우선 확인하세요.`;
+    if (measuredEyResult) measuredEyResult.textContent = `[실측 계산] EY ${ey.toFixed(2)}% = TDS ${tds.toFixed(2)}% × 음료 ${Number(bevVal).toFixed(0)}g ÷ 원두 ${dose}g`;
     if (eyBadge) {
-      eyBadge.textContent = measured.withinGoldenCupEY && measured.withinGoldenCupTDS ? "골든컵 목표 영역" : "골든컵 범위 확인";
+      eyBadge.textContent = measured.withinGoldenCupEY && measured.withinGoldenCupTDS ? "실측 골든컵 참고 영역" : "실측값 범위 확인";
       eyBadge.className = measured.withinGoldenCupEY && measured.withinGoldenCupTDS ? "badge badge-good" : "badge badge-warn";
     }
-    drawScaChart(ey, tds, d.themeColor, d.themeDark);
+    drawScaChart(ey, tds, d.themeColor, d.themeDark, estimated.ey, estimated.tds);
   } else {
-    const tdsText = hasTds ? `TDS ${Number(tdsVal).toFixed(2)}% 실측` : "TDS 미입력";
-    if (eyVal) eyVal.textContent = hasTds ? `${tdsText} · EY 계산 대기` : "실측 TDS / EY 입력 대기";
-    if (tdsSub) tdsSub.textContent = hasBev && !hasTds ? "TDS를 입력하면 EY를 계산합니다." : "미측정 상태에서는 수치를 추정하지 않습니다.";
+    if (eyVal) eyVal.textContent = `예상 EY ${estimated.ey.toFixed(1)}% · TDS ${estimated.tds.toFixed(2)}%`;
+    if (tdsSub) tdsSub.textContent = `참고용 단순 추정치(± EY ${estimated.eyMargin.toFixed(1)}%p / TDS ${estimated.tdsMargin.toFixed(2)}%p). 실제 결과와 다를 수 있습니다.`;
     if (measuredEyResult) measuredEyResult.textContent = hasTds && !hasBev
-      ? "실제 완성 음료 무게를 입력하면 EY 계산"
-      : "TDS와 실제 음료 무게 입력 시 실측 EY 계산";
-    if (eyBadge) { eyBadge.textContent = "측정 대기"; eyBadge.className = "badge badge-warn"; }
-    drawScaChart(null, null, d.themeColor, d.themeDark);
+      ? "실제 완성 음료 무게를 입력하면 실측 EY를 계산합니다."
+      : "추출 완료 후 굴절계 TDS와 실제 음료 무게를 입력하세요.";
+    if (eyBadge) { eyBadge.textContent = "예상값 · 실측 대기"; eyBadge.className = "badge badge-info"; }
+    drawScaChart(null, null, d.themeColor, d.themeDark, estimated.ey, estimated.tds);
   }
 
   // 정량 향미 예측은 제거한다. 향미는 실제 시음 후 사용자가 평가·기록한다.
@@ -897,7 +970,7 @@ function updateDial() {
 }
 
 // ----------------------------------------------------------------------------
-// v1.651: 설정된 물 붓기 일정 및 추출 프로파일 통계
+// v1.651 유지: 설정된 물 붓기 일정 및 추출 프로파일 통계
 // ----------------------------------------------------------------------------
 function getAnalyticsPourSchedule() {
   const dose = parseFloat(document.getElementById("dose-num")?.value) || 30;
@@ -1048,7 +1121,7 @@ function drawTimeChart(targetTime, themeColor) {
 // ----------------------------------------------------------------------------
 // 차트 2: SCA 골든컵 컨트롤 차트
 // ----------------------------------------------------------------------------
-function drawScaChart(ey, tds, themeColor, themeDark) {
+function drawScaChart(ey, tds, themeColor, themeDark, estimatedEy = null, estimatedTds = null) {
   const canvas = document.getElementById("scaChart");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -1088,23 +1161,121 @@ function drawScaChart(ey, tds, themeColor, themeDark) {
   ctx.fillStyle = themeDark; ctx.font = "bold 10.5px sans-serif"; ctx.textAlign = "center";
   ctx.fillText("SCA Golden Cup Target", (gx1 + gx2) / 2, (gy1 + gy2) / 2 + 4);
 
-  if (ey !== null && ey !== undefined && tds !== null && tds !== undefined && Number.isFinite(Number(ey)) && Number.isFinite(Number(tds))) {
-    const curX = padL + ((Math.max(minEy, Math.min(maxEy, ey)) - minEy) / (maxEy - minEy)) * plotW;
-    const curY = padT + plotH - ((Math.max(minTds, Math.min(maxTds, tds)) - minTds) / (maxTds - minTds)) * plotH;
-    ctx.beginPath(); ctx.fillStyle = "#e03131";
-    ctx.arc(curX, curY, 6.5, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke();
-    ctx.fillStyle = "#212529"; ctx.font = "bold 10px monospace"; ctx.textAlign = "left";
-    ctx.fillText(`(${Number(ey).toFixed(2)}%, ${Number(tds).toFixed(2)}%)`, curX + 9, curY + 3);
-  } else {
-    ctx.fillStyle = "#6c757d"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
-    ctx.fillText("실측 TDS와 음료 무게 입력 후 표시", padL + plotW / 2, padT + plotH / 2);
-  }
+  const point = (pointEy, pointTds, color, label, shape) => {
+    if (pointEy === null || pointEy === undefined || pointTds === null || pointTds === undefined || !Number.isFinite(Number(pointEy)) || !Number.isFinite(Number(pointTds))) return;
+    const x = padL + ((Math.max(minEy, Math.min(maxEy, Number(pointEy))) - minEy) / (maxEy - minEy)) * plotW;
+    const y = padT + plotH - ((Math.max(minTds, Math.min(maxTds, Number(pointTds))) - minTds) / (maxTds - minTds)) * plotH;
+    ctx.save(); ctx.fillStyle = color; ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (shape === "square") ctx.rect(x - 5.5, y - 5.5, 11, 11); else ctx.arc(x, y, 6.5, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color; ctx.font = "bold 9.5px sans-serif"; ctx.textAlign = "left";
+    ctx.fillText(label, x + 8, y - 5); ctx.restore();
+  };
+  point(estimatedEy, estimatedTds, "#2563eb", "예상", "square");
+  point(ey, tds, "#dc2626", "실측", "circle");
+  ctx.fillStyle = "#6c757d"; ctx.font = "9px sans-serif"; ctx.textAlign = "left";
+  ctx.fillText("■ 예상값   ● 실측값", padL + 4, H - 23);
 }
 
 // ============================================================================
 // 7. 앱 내부 누적 저장 + 단일 엑셀(.csv) 강제 저장 및 백업·복원 시스템
 // ============================================================================
+const TASTING_LOG_STORAGE_KEY = "brewmap_tasting_logs_v1652";
+function getTastingLogs() {
+  try { const data = JSON.parse(localStorage.getItem(TASTING_LOG_STORAGE_KEY) || "[]"); return Array.isArray(data) ? data : []; }
+  catch (error) { console.warn("추출 평가 기록을 읽지 못했습니다.", error); return []; }
+}
+function setTastingLogs(records) {
+  try { localStorage.setItem(TASTING_LOG_STORAGE_KEY, JSON.stringify(records.slice(0, 500))); return true; }
+  catch (error) { console.error("추출 평가 기록 자동 저장 실패:", error); alert("브라우저 저장 공간에 기록을 저장하지 못했습니다. 브라우저 저장 공간을 확인해 주세요."); return false; }
+}
+function renderTastingHistorySummary() {
+  const el = document.getElementById("tasting-history-summary");
+  if (!el) return;
+  const all = getTastingLogs();
+  const visible = isMaster ? all : all.filter(r => r.author === currentUserName);
+  if (!visible.length) { el.textContent = "아직 자동 저장된 추출·관능평가 기록이 없습니다."; return; }
+  const r = visible[0];
+  const f = r.flavorRatings || {};
+  el.textContent = `최근 자동 저장: ${r.date} · ${r.beanName || "원두"} / ${r.dripperLabel || r.dripper} · 산미 ${f.sour ?? "—"}, 단맛 ${f.sweet ?? "—"}, 쓴맛 ${f.bitter ?? "—"} · 총 ${visible.length}건`;
+}
+function currentBrewSnapshot() {
+  const dose = Number(document.getElementById("dose-num")?.value) || 30;
+  const water = Number(document.getElementById("water-num")?.value) || 480;
+  const time = Number(document.getElementById("time-num")?.value) || 210;
+  const temp = Number(document.getElementById("temp-num")?.value) || 95;
+  const origin = document.getElementById("origin-select")?.value || "";
+  const bean = (window.ORIGIN_DB || {})[origin];
+  const estimated = getEstimatedBrewMetrics(dose, water, time);
+  const tds = document.getElementById("measured-tds")?.value;
+  const beverageMass = document.getElementById("measured-bev")?.value;
+  const measured = window.calculateMeasuredBrewMetrics ? window.calculateMeasuredBrewMetrics(dose, tds, beverageMass) : { isMeasured: false };
+  return {
+    dripper: currentDripper, dripperLabel: currentDripperLabel, origin, beanName: bean?.name || "",
+    recipeType: recipeType || "general", baristaPresetId: currentBaristaPresetId || "", baristaName: currentBaristaPreset?.baristaName || "",
+    dose, water, temp, time, ratio: water / dose,
+    grinderMode: getSelectedGrinderMode(),
+    grinderId: getSelectedGrinderMode() === "registered" ? (document.getElementById("grinder-select")?.value || "") : "",
+    grinderSetting: getSelectedGrinderMode() === "registered" ? (Number(document.getElementById("grinder-dial-num")?.value) || null) : null,
+    generalGrindLevel: getSelectedGrinderMode() === "general" ? getSelectedGeneralGrindLevel() : null,
+    estimatedEY: estimated.ey, estimatedTDS: estimated.tds,
+    measuredTDS: tds !== "" && tds != null ? Number(tds) : null,
+    measuredBeverageMass: beverageMass !== "" && beverageMass != null ? Number(beverageMass) : null,
+    measuredEY: measured.isMeasured ? measured.calculatedEY_percent : null
+  };
+}
+function beginNewBrewSession() {
+  currentBrewSessionId = `brew_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+  latestTastingRecord = null;
+  tastingSkipped = false;
+  ["sour","sweet","bitter"].forEach(key => { const el=document.getElementById(`flavor-${key}`); if(el) { el.value="2.5"; el.dataset.rated="false"; } });
+  ["measured-tds","measured-bev"].forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+  const panel=document.getElementById("postbrew-evaluation-panel"); if(panel) panel.hidden=true;
+  const btn=document.getElementById("btn-save-tasting"); if(btn) btn.disabled=false;
+  const status=document.getElementById("tasting-save-status"); if(status) status.textContent="";
+  updateFlavorChart();
+  updateDial();
+}
+function showPostBrewEvaluation() {
+  const panel=document.getElementById("postbrew-evaluation-panel");
+  if (panel) { panel.hidden=false; panel.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+  const status=document.getElementById("tasting-save-status");
+  if (status) status.textContent="추출이 끝났습니다. 실제로 시음한 뒤 관능평가를 입력해 주세요.";
+}
+function saveTastingEvaluation() {
+  if (!currentBrewSessionId) currentBrewSessionId = `brew_${Date.now()}`;
+  const ratings = getFlavorRatings();
+  const hasRating = Object.values(ratings).some(v => v !== null);
+  const tds = document.getElementById("measured-tds")?.value || "";
+  const beverageMass = document.getElementById("measured-bev")?.value || "";
+  if (!hasRating && !tds && !beverageMass) { alert("산미·단맛·쓴맛 중 하나 이상 평가하거나 실제 측정값을 입력해 주세요."); return; }
+  const snapshot = currentBrewSnapshot();
+  const record = {
+    id: currentBrewSessionId, sessionId: currentBrewSessionId,
+    date: new Date().toLocaleString("ko-KR"), author: currentUserName,
+    roleCode: isMaster ? "MASTER" : "GUEST", ...snapshot,
+    flavorRatings: ratings,
+    note: "추출 완료 후 사용자가 입력한 관능평가 자동 저장"
+  };
+  const records = getTastingLogs().filter(item => item.sessionId !== currentBrewSessionId);
+  records.unshift(record);
+  if (!setTastingLogs(records)) return;
+  latestTastingRecord = record;
+  renderTastingHistorySummary();
+  updateFlavorChart();
+  const status=document.getElementById("tasting-save-status");
+  if (status) status.textContent = "✓ 추출·관능평가 기록을 브라우저에 자동 저장했습니다. 설정값은 별도 저장 버튼으로 저장할 수 있습니다.";
+  const btn=document.getElementById("btn-save-tasting"); if(btn) btn.disabled=true;
+  const summary=document.getElementById("flavor-latest-summary");
+  if(summary) summary.textContent = `최근 평가: 산미 ${ratings.sour ?? "미평가"} · 단맛 ${ratings.sweet ?? "미평가"} · 쓴맛 ${ratings.bitter ?? "미평가"}`;
+}
+function skipTastingEvaluation() {
+  tastingSkipped = true;
+  const panel=document.getElementById("postbrew-evaluation-panel"); if(panel) panel.hidden=true;
+  const status=document.getElementById("tasting-save-status"); if(status) status.textContent="관능평가를 나중에 하기로 했습니다. 추출 평가 기록은 아직 저장되지 않았습니다.";
+}
+
 const STORAGE_KEY = "ohBaristaCumulativeRecipesDB_v3";
 
 function getStoredRecipes() {
@@ -1167,7 +1338,7 @@ function saveCurrentRecipe() {
   const nameInput = prompt("저장할 레시피 이름을 확인해 주세요 (기본 추천 이름 자동 입력):", defaultName);
   if (!nameInput) return;
 
-  const reviewInput = prompt("커피 맛이나 향미 특징을 한 줄로 남겨주세요:", "산미와 단맛의 밸런스가 아주 좋음");
+  const reviewInput = prompt("레시피 메모를 남기세요 (선택 사항):", latestTastingRecord?.sessionId === currentBrewSessionId ? "추출 후 관능평가 기록 포함" : "");
   const dose = parseFloat(document.getElementById("dose-num").value) || 30;
   const water = parseFloat(document.getElementById("water-num").value) || 480;
   const temp = parseFloat(document.getElementById("temp-num").value) || 95.0;
@@ -1195,7 +1366,8 @@ function saveCurrentRecipe() {
     origin: originKey,
     recipeType: recipeType || "general",
     baristaPresetId: currentBaristaPresetId || "",
-    flavorRatings: getFlavorRatings(),
+    flavorRatings: latestTastingRecord?.sessionId === currentBrewSessionId ? latestTastingRecord.flavorRatings : { sour:null, sweet:null, bitter:null },
+    tastingRecordId: latestTastingRecord?.sessionId === currentBrewSessionId ? latestTastingRecord.id : "",
     dose: dose,
     grinderMode: grinderMode,
     grinderId: grinderMode === "registered" && grinderSelect ? grinderSelect.value : "",
@@ -1208,7 +1380,7 @@ function saveCurrentRecipe() {
     time: time,
     water: water,
     ey: document.getElementById("ey-val").textContent,
-    review: (reviewInput && reviewInput.trim()) ? reviewInput.trim() : "최고의 세팅"
+    review: (reviewInput && reviewInput.trim()) ? reviewInput.trim() : "메모 없음"
   };
 
   const list = getStoredRecipes();
@@ -1230,7 +1402,7 @@ function downloadExcelFile(mode) {
     return;
   }
 
-  const headers = ["고유ID", "저장일시", "구분코드", "작성자", "레시피이름", "드리퍼", "산지키", "원두량(g)", "분쇄설정방식", "그라인더ID", "그라인더눈금", "일반분쇄도단계", "실측TDS(%)", "실측음료무게(g)", "물온도(℃)", "추출시간(초)", "물의양(g)", "수율정보", "맛한줄평", "측정상태", "레시피유형", "바리스타프리셋ID", "드리퍼표시명", "향미산미", "향미단맛", "향미쓴맛"];
+  const headers = ["고유ID", "저장일시", "구분코드", "작성자", "레시피이름", "드리퍼", "산지키", "원두량(g)", "분쇄설정방식", "그라인더ID", "그라인더눈금", "일반분쇄도단계", "실측TDS(%)", "실측음료무게(g)", "물온도(℃)", "추출시간(초)", "물의양(g)", "수율정보", "맛한줄평", "측정상태", "레시피유형", "바리스타프리셋ID", "드리퍼표시명", "향미산미", "향미단맛", "향미쓴맛", "시음기록ID"];
   const escapeCsv = val => `"${String(val ?? "").replace(/"/g, '""')}"`;
 
   const rows = targetList.map(r => [
@@ -1238,7 +1410,7 @@ function downloadExcelFile(mode) {
     r.dose, r.grinderMode || "none", r.grinderId || "", r.grinderSetting ?? "", r.generalGrindLevel ?? "",
     r.measuredTds ?? "", r.measuredBeverageMass ?? "", r.temp, r.time, r.water, r.ey, r.review,
     r.measurementStatus || "legacy_unverified", r.recipeType || "general", r.baristaPresetId || "", r.dripperLabel || "",
-    r.flavorRatings?.sour ?? "", r.flavorRatings?.sweet ?? "", r.flavorRatings?.bitter ?? ""
+    r.flavorRatings?.sour ?? "", r.flavorRatings?.sweet ?? "", r.flavorRatings?.bitter ?? "", r.tastingRecordId || ""
   ].map(escapeCsv).join(","));
 
   const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
@@ -1339,10 +1511,11 @@ function handleExcelFileUpload(event) {
         dripperLabel: hasV16Headers ? (col(cols, "드리퍼표시명", -1) || (importedPreset && importedPreset.dripperModel) || "") : "",
         recipeType: hasV16Headers ? (col(cols, "레시피유형", -1) || (importedPresetId ? "barista" : "general")) : "general",
         baristaPresetId: importedPresetId,
+        tastingRecordId: hasV16Headers ? (col(cols, "시음기록ID", -1) || "") : "",
         flavorRatings: hasV16Headers ? {
-          sour: col(cols, "향미산미", -1) !== "" ? Number(col(cols, "향미산미", -1)) : null,
-          sweet: col(cols, "향미단맛", -1) !== "" ? Number(col(cols, "향미단맛", -1)) : null,
-          bitter: col(cols, "향미쓴맛", -1) !== "" ? Number(col(cols, "향미쓴맛", -1)) : null
+          sour: (() => { const v = col(cols, "향미산미", -1); return v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null; })(),
+          sweet: (() => { const v = col(cols, "향미단맛", -1); return v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null; })(),
+          bitter: (() => { const v = col(cols, "향미쓴맛", -1); return v !== undefined && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null; })()
         } : { sour:null, sweet:null, bitter:null },
         origin: (window.ORIGIN_DB || {})[col(cols, "산지키", 6)] ? col(cols, "산지키", 6) : "geisha",
         dose: parseFloat(col(cols, "원두량(g)", 7)) || 30,
@@ -1472,7 +1645,7 @@ function loadRecipeToDial(id) {
   currentBaristaPresetId = null;
   currentBaristaPreset = null;
   recipeType = currentBaristaPreset ? "barista" : "general";
-  wizardState = { dripper: true, bean: true, recipe: true };
+  wizardState = { dripper: true, bean: true, recipe: true, grind: true };
   const recipeRadio = document.querySelector(`input[name="recipe-type"][value="${recipeType}"]`);
   if (recipeRadio) recipeRadio.checked = true;
   const presetSelect = document.getElementById("preset-select");
@@ -1490,7 +1663,7 @@ function loadRecipeToDial(id) {
     const go=document.getElementById("general-recipe-options");if(go)go.hidden=false;
     const bo=document.getElementById("barista-recipe-options");if(bo)bo.hidden=true;
   }
-  ["sour","sweet","bitter"].forEach(key => { const el=document.getElementById(`flavor-${key}`); if(el)el.value=r.flavorRatings?.[key] ?? 0; });
+  ["sour","sweet","bitter"].forEach(key => { const el=document.getElementById(`flavor-${key}`); if(el){ const v=r.flavorRatings?.[key]; el.value=v ?? 2.5; el.dataset.rated=(v !== null && v !== undefined && v !== "") ? "true" : "false"; } });
   refreshWizard();
   updateFlavorChart();
   const tdsInput = document.getElementById("measured-tds");
@@ -1505,7 +1678,7 @@ function loadRecipeToDial(id) {
 
 
 // ============================================================================
-// v1.651 도움말 · 단계 선택 · 인증 세션
+// v1.652 도움말 · 단계 선택 · 인증 세션
 // ============================================================================
 const MASTER_SESSION_KEY = "brewmap_master_session_v1651";
 const MASTER_SESSION_DAYS = 10;
@@ -1534,7 +1707,7 @@ function showInlineHelp(topic) {
     temp: ["추출 수온", "추출에 사용하는 물의 목표 온도입니다. 실제 주전자 출수 온도 및 추출 중 온도와 차이가 있을 수 있습니다."],
     time: ["목표 추출 시간", "레시피의 목표 종료 시간입니다. 분쇄도·원두·물줄기·교반과 드리퍼 상태에 따라 실제 배수 시간은 달라집니다."],
     grind: ["분쇄 설정", "등록 모델은 해당 그라인더 고유 눈금만 표시합니다. 일반 5단계는 모델을 모를 때 사용하는 정성적 분류이며 마이크론이나 다른 그라인더 눈금으로 환산하지 않습니다."],
-    metrics: ["수율(EY)과 농도(TDS)", "SCA 참고 목표 범위와 실측값을 분리해서 표시합니다. 검증된 개인별 예측 모델은 포함하지 않으며, 실제 EY는 굴절계 TDS와 실제 완성 음료 무게가 모두 있어야 계산할 수 있습니다."],
+    metrics: ["예상·실측 수율(EY)과 농도(TDS)", "예상값은 수온·시간·물:원두 비율·일반 분쇄 단계와 단순 가정을 반영한 화면용 휴리스틱입니다. 실험으로 보정되거나 검증된 예측 모델이 아니며 표시한 오차 범위도 통계적 신뢰구간이 아닙니다. 실제 결과와 다를 수 있습니다. 실측 EY는 굴절계 TDS와 실제 완성 음료 무게가 모두 있어야 계산됩니다."],
     flavor: ["향미 평가", "산미·단맛·쓴맛은 사용자가 실제로 시음한 뒤 0~5점으로 기록합니다. 설정값만으로 향미 점수를 예측하지 않습니다."],
     extraction: ["시간별 성분 용출 개념도", "시간축에 따른 성분 용출 경향을 설명하는 개념 곡선입니다. 특정 원두의 실측 화학 분석 데이터가 아니며 목표 시간선은 현재 레시피의 목표 시간입니다."],
     sca: ["SCA 골든컵 차트", "참고 목표 영역은 TDS 1.15~1.35%, EY 18~22%로 표시합니다. 개인 취향이나 모든 추출 방식에 대한 절대적 품질 판정은 아닙니다."],
@@ -1552,14 +1725,25 @@ function showInlineHelp(topic) {
 }
 function closeInlineHelp() { const modal=document.getElementById("inlineHelpModal"); if(modal)modal.classList.remove("open"); }
 function getFlavorRatings() {
-  const read = key => { const el=document.getElementById(`flavor-${key}`); const n=el?Number(el.value):0; return n>0?n:null; };
+  const read = key => {
+    const el=document.getElementById(`flavor-${key}`);
+    if (!el || el.dataset.rated !== "true") return null;
+    const n=Number(el.value);
+    return Number.isFinite(n) ? Math.max(0, Math.min(5, n)) : null;
+  };
   return { sour: read("sour"), sweet: read("sweet"), bitter: read("bitter") };
+}
+function setFlavorRatingTouched(key) {
+  const el=document.getElementById(`flavor-${key}`);
+  if (el) el.dataset.rated="true";
+  updateFlavorChart();
 }
 function updateFlavorChart() {
   const values = ["sour","sweet","bitter"].map(key => {
     const el=document.getElementById(`flavor-${key}`); const value=el?Number(el.value):0;
+    const rated=!!el && el.dataset.rated === "true";
     const output=document.getElementById(`flavor-${key}-value`);
-    if(output) output.textContent=value>0?`${value.toFixed(1)} / 5`:"미평가";
+    if(output) output.textContent=rated?`${value.toFixed(1)} / 5`:"미평가";
     return value;
   });
   const canvas=document.getElementById("flavorChart"); if(!canvas)return;
@@ -1569,16 +1753,18 @@ function updateFlavorChart() {
   const max=5, left=54, right=20, top=16, row=43, usable=W-left-right;
   ctx.font="12px sans-serif"; ctx.textBaseline="middle";
   values.forEach((v,i)=>{
+    const key=["sour","sweet","bitter"][i];
+    const isRated=document.getElementById(`flavor-${key}`)?.dataset.rated === "true";
     const y=top+i*row;
     ctx.fillStyle="#596b5d"; ctx.textAlign="right"; ctx.fillText(labels[i],left-10,y+9);
     ctx.fillStyle="#edf2ed"; ctx.fillRect(left,y,usable,18);
-    if(v>0){ctx.fillStyle=colors[i];ctx.fillRect(left,y,usable*v/max,18);}
-    ctx.fillStyle="#647468";ctx.textAlign="left";ctx.fillText(v>0?`${v.toFixed(1)}/5`:"미평가",left+usable+5,y+9);
+    if(isRated){ctx.fillStyle=colors[i];ctx.fillRect(left,y,usable*v/max,18);}
+    ctx.fillStyle="#647468";ctx.textAlign="left";ctx.fillText(isRated?`${v.toFixed(1)}/5`:"미평가",left+usable+5,y+9);
   });
 }
 
 // ============================================================================
-// 9. 3D 실사 추출 애니메이션 & 음성·ASMR 사운드 엔진
+// 9. 3D 추출 개념 애니메이션 & 음성·ASMR 사운드 엔진
 // ============================================================================
 let audioCtx = null;
 let pourNoiseNode = null;
@@ -1940,7 +2126,7 @@ function openBrewModal() {
 
   const modalTitle = document.getElementById("modal-title");
   const modalSub = document.getElementById("modal-subtitle");
-  if (modalTitle) modalTitle.textContent = `${currentUserName} 바리스타 3D 브루잉 가이드 (${currentDripperLabel || d.fullName})`;
+  if (modalTitle) modalTitle.textContent = `BREWMAP 3D 브루잉 가이드 (${currentDripperLabel || d.fullName})`;
   const specialNote = currentBaristaPreset?.requiresSpecialEquipment ? " · 특수 장비 전용 프리셋: 3D 드리퍼 그림은 추출 순서 안내용 개념 표현입니다." : "";
   if (modalSub) modalSub.textContent = `원두 ${dose}g · 물 투입량 ${water}g · ${temp.toFixed(1)}°C · 목표 시간 ${formatSecToKorean(time)}${specialNote}`;
 
@@ -1951,6 +2137,10 @@ function openBrewModal() {
 }
 
 function closeBrewModal() {
+  if (brewElapsed >= (parseFloat(document.getElementById("time-num")?.value) || 210) && !latestTastingRecord && !tastingSkipped) {
+    const proceed = window.confirm("관능평가를 아직 저장하지 않았습니다. 추출 평가 없이 닫을까요?");
+    if (!proceed) return;
+  }
   brewRunning = false;
   setPouringWaterSound(false);
   if (brewAnimReq) cancelAnimationFrame(brewAnimReq);
@@ -1967,6 +2157,7 @@ function syncStartButtonsText(label) {
 }
 
 function resetBrewTimer() {
+  beginNewBrewSession();
   brewCompletionPromptShown = false;
   brewRunning = false;
   brewElapsed = -10.0;
@@ -2033,10 +2224,7 @@ function brewLoop(now) {
     syncStartButtonsText("↺ 다시 추출");
     if (!brewCompletionPromptShown) {
       brewCompletionPromptShown = true;
-      window.setTimeout(() => {
-        const shouldSave = window.confirm("추출이 완료되었습니다. 방금 내린 레시피를 저장하시겠습니까?");
-        if (shouldSave) saveCurrentRecipe();
-      }, 350);
+      window.setTimeout(() => showPostBrewEvaluation(), 350);
     }
   }
 
@@ -2145,205 +2333,255 @@ function brewLoop(now) {
 }
 
 // ----------------------------------------------------------------------------
-// 3D 실사 애니메이션 캔버스 (비이커 글씨 완전 제거 버전)
+// 3D 투명 드리퍼·커피층 애니메이션 캔버스
 // ----------------------------------------------------------------------------
 function draw3DScene(elapsed, phaseMode, currentWater, phaseProgress, hudTitle, hudSub) {
   const canvas = document.getElementById("brewAnimCanvas");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  const W = canvas.width;
-  const H = canvas.height;
+  const W = canvas.width, H = canvas.height, cx = W / 2;
   ctx.clearRect(0, 0, W, H);
 
-  const d = (window.DRIPPERS || {})[currentDripper] || { themeColor: "#00a1e4" };
-  const totalTime = parseFloat(document.getElementById("time-num").value) || 210;
-  const water = parseFloat(document.getElementById("water-num").value) || 480;
-  let targetRefWater = water;
-  if (currentModeKey === "bypass") {
-    const bRes = window.calculateBrewModeWater(parseFloat(document.getElementById("dose-num").value) || 30, "bypass");
-    targetRefWater = bRes.dripperInputWaterG;
-  }
+  const dose = Math.max(10, Number(document.getElementById("dose-num")?.value) || 30);
+  const water = Math.max(1, Number(document.getElementById("water-num")?.value) || 480);
+  const waterRatio = Math.max(0, Math.min(1, currentWater / water));
+  const visualDripper = ["bluebottle", "hario", "kalita"].includes(currentDripper)
+    ? currentDripper
+    : (currentDripper === "hario_switch" ? "hario" : "bluebottle");
+  const dripperData = (window.DRIPPERS || {})[visualDripper] || { themeColor: "#78947b", themeDark: "#42634a" };
+  const accent = dripperData.themeColor || "#78947b";
+  const pouring = phaseMode === "pouring";
+  const waiting = phaseMode === "waiting";
 
-  const waterRatio = Math.max(0, Math.min(1, currentWater / Math.max(1, targetRefWater)));
-  const cx = W / 2;
-  const isPouring = (phaseMode === "pouring");
-  const isWaiting = (phaseMode === "waiting");
-
-  // 배경 그라데이션
-  const bgGrad = ctx.createRadialGradient(cx, 190, 15, cx, 220, 260);
-  if (isPouring) {
-    bgGrad.addColorStop(0, "#0c3c5c");
-    bgGrad.addColorStop(0.55, "#0b1e33");
-    bgGrad.addColorStop(1, "#060c17");
-  } else if (isWaiting) {
-    bgGrad.addColorStop(0, "#4a2c11");
-    bgGrad.addColorStop(0.55, "#26160a");
-    bgGrad.addColorStop(1, "#120a05");
-  } else {
-    bgGrad.addColorStop(0, "#2b3445");
-    bgGrad.addColorStop(0.6, "#151a24");
-    bgGrad.addColorStop(1, "#090c12");
-  }
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // 대기 중 보케 효과
-  if (isWaiting) {
-    ctx.save();
-    for (let i = 0; i < 8; i++) {
-      const bx = (cx - 120) + ((i * 37) % 240) + Math.sin(elapsed * 1.2 + i) * 10;
-      const by = 280 - ((elapsed * 18 + i * 28) % 200);
-      const br = 6 + (i % 3) * 4;
-      ctx.fillStyle = "rgba(255, 212, 59, 0.1)";
-      ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+  // 단계 번호: 0=Bloom, 1=1차, 2=2차, 3=3차/마무리
+  let activeStageIndex = 0;
+  if (Array.isArray(pourStages)) {
+    for (let i = 1; i < pourStages.length; i++) {
+      if (elapsed >= Number(pourStages[i].startSec || 0)) activeStageIndex = i;
     }
-    ctx.restore();
   }
+  const stageNo = Math.max(0, Math.min(3, activeStageIndex - 1));
+  const stageAmplitudes = [15, 10.5, 7.2, 4.5];
+  const craterTargets = [4, 8, 12, 16];
+  const previousCrater = stageNo === 0 ? 0 : craterTargets[stageNo - 1];
+  const progress = Math.max(0, Math.min(1, Number(phaseProgress) || 0));
+  let swell = 0, crater = 0;
+  if (pouring) {
+    swell = stageAmplitudes[stageNo] * (0.38 + 0.62 * progress) * Math.pow(dose / 30, 0.22);
+    crater = previousCrater * (1 - progress) + 0.5;
+  } else if (waiting) {
+    swell = stageAmplitudes[stageNo] * (1 - 0.78 * progress) * Math.pow(dose / 30, 0.22);
+    crater = previousCrater + (craterTargets[stageNo] - previousCrater) * progress;
+  } else if (phaseMode === "done") {
+    swell = 0;
+    crater = craterTargets[3];
+  }
+  const wetness = Math.min(1, Math.max(0, currentWater / Math.max(1, dose * 3.2)));
 
-  // 상단 HUD 오버레이
+  // Night-blue studio background
+  const bg = ctx.createRadialGradient(cx, 210, 10, cx, 220, 280);
+  if (pouring) {
+    bg.addColorStop(0, "#103b50"); bg.addColorStop(0.62, "#0b2031"); bg.addColorStop(1, "#070d16");
+  } else if (waiting) {
+    bg.addColorStop(0, "#3c291b"); bg.addColorStop(0.62, "#21170f"); bg.addColorStop(1, "#090d14");
+  } else {
+    bg.addColorStop(0, "#253548"); bg.addColorStop(0.6, "#111e2a"); bg.addColorStop(1, "#080d14");
+  }
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // HUD
   ctx.save();
-  ctx.fillStyle = isPouring ? "rgba(0, 161, 228, 0.32)" : (isWaiting ? "rgba(245, 159, 0, 0.3)" : "rgba(255, 255, 255, 0.1)");
-  ctx.strokeStyle = isPouring ? "#4dabf7" : (isWaiting ? "#ffd43b" : "rgba(255, 255, 255, 0.25)");
+  ctx.fillStyle = pouring ? "rgba(8,112,153,.45)" : waiting ? "rgba(161,103,37,.34)" : "rgba(255,255,255,.10)";
+  ctx.strokeStyle = pouring ? "#55c5ee" : waiting ? "#d6a85a" : "rgba(255,255,255,.25)";
   ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.roundRect(12, 10, W - 24, 54, 10); ctx.fill(); ctx.stroke();
-
-  ctx.fillStyle = "#ffffff"; ctx.font = "900 13.5px sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(hudTitle || "추출 대기 중", cx, 30);
-
-  ctx.fillStyle = isPouring ? "#a5d8ff" : "#ffe066"; ctx.font = "700 11px sans-serif";
-  ctx.fillText(hudSub || "", cx, 48);
+  ctx.fillStyle = "#fff"; ctx.font = "900 13px sans-serif"; ctx.textAlign = "center";
+  ctx.fillText(hudTitle || "BREWMAP 3D 브루잉", cx, 30);
+  ctx.fillStyle = pouring ? "#a5e7fa" : "#ffe2a6"; ctx.font = "700 10.5px sans-serif";
+  ctx.fillText(hudSub || "커피층의 팽창과 배수 변화를 표현합니다", cx, 48);
   ctx.restore();
 
-  // 구즈넥 주전자 스파우트 & 물줄기
-  ctx.save();
-  if (isPouring) {
-    const spoutSway = Math.sin(elapsed * 5.2) * 16;
-    ctx.strokeStyle = "#adb5bd"; ctx.lineWidth = 9; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(W - 10, 78); ctx.quadraticCurveTo(cx + 55, 96, cx + spoutSway, 86); ctx.stroke();
-
-    const streamGrad = ctx.createLinearGradient(cx, 88, cx, 150);
-    streamGrad.addColorStop(0, "rgba(165, 216, 255, 0.98)");
-    streamGrad.addColorStop(1, "rgba(51, 154, 240, 0.85)");
-    ctx.strokeStyle = streamGrad; ctx.lineWidth = 4.5;
-    ctx.beginPath(); ctx.moveTo(cx + spoutSway, 88); ctx.quadraticCurveTo(cx + spoutSway * 0.4, 118, cx + spoutSway * 0.5, 150); ctx.stroke();
-  } else {
-    ctx.strokeStyle = "rgba(173, 181, 189, 0.4)"; ctx.lineWidth = 7; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(W + 10, 72); ctx.quadraticCurveTo(W - 20, 80, W - 42, 74); ctx.stroke();
-  }
-  ctx.restore();
-
-  // 하단 3D 전자저울 (시간 및 물 무게 표시)
-  const scaleY = 372;
-  const scaleW = 330;
-  const scaleH = 64;
-  const scaleX = cx - scaleW / 2;
-
-  ctx.save();
-  const scaleBodyGrad = ctx.createLinearGradient(0, scaleY, 0, scaleY + scaleH);
-  scaleBodyGrad.addColorStop(0, "#212529"); scaleBodyGrad.addColorStop(1, "#0b0d0e");
-  ctx.fillStyle = scaleBodyGrad; ctx.strokeStyle = isPouring ? "#00a1e4" : (isWaiting ? "#f59f00" : "#495057");
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(scaleX, scaleY, scaleW, scaleH, 12); ctx.fill(); ctx.stroke();
-
-  // 좌측 타이머 LED
-  ctx.fillStyle = "#05070a"; ctx.strokeStyle = "#1864ab"; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.roundRect(scaleX + 12, scaleY + 9, 140, 46, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#74c0fc"; ctx.font = "800 10px sans-serif"; ctx.textAlign = "left";
-  ctx.fillText("TIME", scaleX + 20, scaleY + 22);
-  ctx.fillStyle = elapsed < 0 ? "#ff8787" : "#3bc9db"; ctx.font = "900 21px monospace";
-  ctx.fillText(formatMMSS(elapsed), scaleX + 20, scaleY + 47);
-
-  // 우측 무게 LED
-  ctx.fillStyle = "#05070a"; ctx.strokeStyle = "#2b8a3e";
-  ctx.beginPath(); ctx.roundRect(scaleX + scaleW - 152, scaleY + 9, 140, 46, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = isPouring ? "#66d9e8" : "#8ce99a"; ctx.font = "800 10px sans-serif"; ctx.textAlign = "right";
-  ctx.fillText(isPouring ? "POURING..." : "WEIGHT (g)", scaleX + scaleW - 20, scaleY + 22);
-  ctx.fillStyle = "#ffd43b"; ctx.font = "900 21px monospace";
-  ctx.fillText(`${Math.round(currentWater)} g`, scaleX + scaleW - 20, scaleY + 47);
-  ctx.restore();
-
-  // 서버 & 커피 수면 (비이커 위 글씨 완전 제거)
-  const srvTopY = 242;
-  const srvBotY = 362;
-  const srvTopW = 50;
-  const srvBotW = 76;
-
-  const fillRatio = Math.min(0.84, waterRatio * 0.84);
-  const liquidH = (srvBotY - srvTopY) * fillRatio;
+  // Server and coffee surface
+  const srvTopY = 270, srvBotY = 365, srvTopW = 52, srvBotW = 78;
+  const beverageRatio = Math.min(0.78, waterRatio * 0.78);
+  const liquidH = (srvBotY - srvTopY) * beverageRatio;
   const liquidTopY = srvBotY - liquidH;
   const liquidTopW = srvTopW + (srvBotW - srvTopW) * ((liquidTopY - srvTopY) / (srvBotY - srvTopY));
-
-  if (liquidH > 3) {
-    ctx.save();
-    const cofGrad = ctx.createLinearGradient(cx - srvBotW, liquidTopY, cx + srvBotW, srvBotY);
-    cofGrad.addColorStop(0, "#8c481e"); cofGrad.addColorStop(0.5, "#4a200a"); cofGrad.addColorStop(1, "#1f0b02");
-    ctx.fillStyle = cofGrad;
-    ctx.beginPath();
-    ctx.moveTo(cx - liquidTopW, liquidTopY); ctx.lineTo(cx + liquidTopW, liquidTopY);
-    ctx.lineTo(cx + srvBotW, srvBotY); ctx.lineTo(cx - srvBotW, srvBotY);
-    ctx.closePath(); ctx.fill();
-
-    ctx.fillStyle = "#b06d3b";
-    ctx.beginPath(); ctx.ellipse(cx, liquidTopY, liquidTopW, 8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-
-  // 드리퍼에서 서버로 떨어지는 추출 줄기
-  if (elapsed > 2 && waterRatio < 1.0) {
-    ctx.save();
-    ctx.strokeStyle = "#b06d3b"; ctx.lineWidth = isPouring ? 3 : 2;
-    ctx.setLineDash(isPouring ? [8, 4] : [4, 8]);
-    ctx.lineDashOffset = -elapsed * 50;
-    const holes = currentDripper === "kalita" ? [cx - 10, cx, cx + 10] : [cx];
-    holes.forEach(hx => {
-      ctx.beginPath(); ctx.moveTo(hx, 226); ctx.lineTo(hx, liquidTopY); ctx.stroke();
-    });
-    ctx.restore();
-  }
-
-  // 유리 서버 외곽선
   ctx.save();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)"; ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx - srvTopW, srvTopY); ctx.lineTo(cx - srvBotW, srvBotY);
-  ctx.moveTo(cx + srvTopW, srvTopY); ctx.lineTo(cx + srvBotW, srvBotY);
-  ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(cx, srvBotY, srvBotW, 10, 0, 0, Math.PI); ctx.stroke();
+  if (liquidH > 2) {
+    const coffee = ctx.createLinearGradient(cx - srvBotW, liquidTopY, cx + srvBotW, srvBotY);
+    coffee.addColorStop(0, "#7d4527"); coffee.addColorStop(0.48, "#3b1c0d"); coffee.addColorStop(1, "#211008");
+    ctx.fillStyle = coffee;
+    ctx.beginPath(); ctx.moveTo(cx - liquidTopW, liquidTopY); ctx.lineTo(cx + liquidTopW, liquidTopY);
+    ctx.lineTo(cx + srvBotW, srvBotY); ctx.lineTo(cx - srvBotW, srvBotY); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(206,133,78,.82)";
+    ctx.beginPath(); ctx.ellipse(cx, liquidTopY, liquidTopW, 7, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = "rgba(222,242,248,.68)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx - srvTopW, srvTopY); ctx.lineTo(cx - srvBotW, srvBotY); ctx.moveTo(cx + srvTopW, srvTopY); ctx.lineTo(cx + srvBotW, srvBotY); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx, srvBotY, srvBotW, 9, 0, 0, Math.PI); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(cx, srvTopY, srvTopW, 6, 0, Math.PI, Math.PI * 2); ctx.stroke();
   ctx.restore();
 
-  // 드리퍼 (비이커/드리퍼 위 글씨 완전 제거)
-  const dTopY = 120;
-  const dBotY = 226;
-  const dTopW = 86;
-  const dBotW = currentDripper === "hario" ? 20 : 48;
-
+  // Gooseneck spout: keep the stream aligned to the coffee-bed center.
   ctx.save();
-  const bodyGrad = ctx.createLinearGradient(cx - dTopW, dTopY, cx + dTopW, dTopY);
-  bodyGrad.addColorStop(0, "#dee2e6"); bodyGrad.addColorStop(0.35, "#ffffff"); bodyGrad.addColorStop(1, "#adb5bd");
-  ctx.fillStyle = bodyGrad;
+  ctx.strokeStyle = "#adb9c5"; ctx.lineWidth = 8; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(W - 10, 78); ctx.quadraticCurveTo(cx + 55, 94, cx + 5, 86); ctx.stroke();
+  if (pouring) {
+    const streamX = cx + Math.sin(elapsed * 5) * 1.2;
+    const streamGrad = ctx.createLinearGradient(streamX, 90, cx, 205);
+    streamGrad.addColorStop(0, "rgba(191,235,255,.98)"); streamGrad.addColorStop(1, "rgba(75,176,220,.8)");
+    ctx.strokeStyle = streamGrad; ctx.lineWidth = 4.2;
+    ctx.beginPath(); ctx.moveTo(streamX, 90); ctx.quadraticCurveTo(cx + 1, 137, cx, 194); ctx.stroke();
+    ctx.fillStyle = "rgba(194,239,255,.55)"; ctx.beginPath(); ctx.ellipse(cx, 195, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // Dripper geometry (transparent glass). Different inner profiles per dripper.
+  const topY = 128, bottomY = 252, topHalf = 91;
+  const bottomHalf = visualDripper === "hario" ? 22 : (visualDripper === "kalita" ? 62 : 38);
+  const shapePath = () => {
+    ctx.beginPath();
+    if (visualDripper === "kalita") {
+      ctx.moveTo(cx - topHalf, topY); ctx.lineTo(cx + topHalf, topY);
+      ctx.lineTo(cx + 76, topY + 22); ctx.lineTo(cx + bottomHalf, bottomY - 5);
+      ctx.lineTo(cx - bottomHalf, bottomY - 5); ctx.lineTo(cx - 76, topY + 22); ctx.closePath();
+    } else if (visualDripper === "bluebottle") {
+      ctx.moveTo(cx - topHalf, topY); ctx.lineTo(cx + topHalf, topY);
+      ctx.bezierCurveTo(cx + 77, topY + 45, cx + 54, bottomY - 24, cx + bottomHalf, bottomY - 5);
+      ctx.lineTo(cx - bottomHalf, bottomY - 5);
+      ctx.bezierCurveTo(cx - 54, bottomY - 24, cx - 77, topY + 45, cx - topHalf, topY);
+      ctx.closePath();
+    } else {
+      ctx.moveTo(cx - topHalf, topY); ctx.lineTo(cx + topHalf, topY);
+      ctx.lineTo(cx + bottomHalf, bottomY - 5); ctx.lineTo(cx - bottomHalf, bottomY - 5); ctx.closePath();
+    }
+  };
+  const widthAtY = y => {
+    const t = Math.max(0, Math.min(1, (y - topY) / (bottomY - topY)));
+    if (visualDripper === "kalita") return topHalf - (topHalf - bottomHalf) * t * 0.78;
+    if (visualDripper === "bluebottle") return topHalf - (topHalf - bottomHalf) * Math.pow(t, 0.88);
+    return topHalf - (topHalf - bottomHalf) * t;
+  };
+
+  // Main coffee bed height is tied to coffee dose. A larger dose creates a taller bed.
+  const normalizedDose = Math.max(0, Math.min(1, (dose - 15) / 35));
+  const bedBaseY = bottomY - 34 - normalizedDose * 30;
+  const bedHalfW = Math.max(27, widthAtY(bedBaseY) - 7);
+  const centerOffset = -swell + crater;
+  const centerY = bedBaseY + centerOffset;
+
+  // Glass body behind coffee bed
+  ctx.save(); shapePath();
+  const glass = ctx.createLinearGradient(cx - topHalf, topY, cx + topHalf, bottomY);
+  glass.addColorStop(0, "rgba(220,244,249,.16)"); glass.addColorStop(.48, "rgba(255,255,255,.06)"); glass.addColorStop(1, "rgba(178,220,231,.13)");
+  ctx.fillStyle = glass; ctx.fill();
+  ctx.restore();
+
+  // Clip bed to the transparent dripper interior.
+  ctx.save(); shapePath(); ctx.clip();
+  const grounds = ctx.createLinearGradient(cx, bedBaseY, cx, bottomY);
+  grounds.addColorStop(0, "#7a4528"); grounds.addColorStop(.18, "#4a2817"); grounds.addColorStop(1, "#241309");
+  ctx.fillStyle = grounds;
   ctx.beginPath();
-  ctx.moveTo(cx - dTopW, dTopY); ctx.lineTo(cx + dTopW, dTopY);
-  ctx.lineTo(cx + dBotW, dBotY); ctx.lineTo(cx - dBotW, dBotY);
+  ctx.moveTo(cx - bedHalfW, bedBaseY);
+  ctx.quadraticCurveTo(cx - bedHalfW * .42, bedBaseY + centerOffset * .68, cx, centerY);
+  ctx.quadraticCurveTo(cx + bedHalfW * .42, bedBaseY + centerOffset * .68, cx + bedHalfW, bedBaseY);
+  ctx.lineTo(cx + bottomHalf + 8, bottomY + 8); ctx.lineTo(cx - bottomHalf - 8, bottomY + 8); ctx.closePath(); ctx.fill();
+
+  // Uneven, wet coffee surface: edge ring remains while the centre swells or dips.
+  const surfaceGrad = ctx.createRadialGradient(cx - 9, centerY - 7, 3, cx, centerY + 1, bedHalfW * .95);
+  surfaceGrad.addColorStop(0, pouring ? "#c28a5d" : "#98603b");
+  surfaceGrad.addColorStop(.52, wetness > .15 ? "#754126" : "#5c321c");
+  surfaceGrad.addColorStop(1, "#3b2113");
+  ctx.fillStyle = surfaceGrad;
+  ctx.beginPath();
+  ctx.moveTo(cx - bedHalfW, bedBaseY);
+  ctx.quadraticCurveTo(cx - bedHalfW * .38, bedBaseY + centerOffset * .72, cx, centerY);
+  ctx.quadraticCurveTo(cx + bedHalfW * .38, bedBaseY + centerOffset * .72, cx + bedHalfW, bedBaseY);
+  ctx.quadraticCurveTo(cx + bedHalfW * .65, bedBaseY + 9, cx, bedBaseY + 9);
+  ctx.quadraticCurveTo(cx - bedHalfW * .65, bedBaseY + 9, cx - bedHalfW, bedBaseY);
   ctx.closePath(); ctx.fill();
 
-  ctx.fillStyle = d.themeDark;
-  ctx.beginPath(); ctx.roundRect(cx - 64, dBotY - 2, 128, 8, 3); ctx.fill();
+  if (pouring) {
+    ctx.fillStyle = "rgba(124,213,231,.34)";
+    ctx.beginPath(); ctx.ellipse(cx, centerY - 1, Math.max(12, bedHalfW * (.22 + .10 * progress)), 4 + progress * 2, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (waiting && wetness > .1) {
+    ctx.fillStyle = "rgba(126,186,192,.16)";
+    ctx.beginPath(); ctx.ellipse(cx, centerY + 2, bedHalfW * .26, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+  }
 
-  // 커피 베드 (블루밍)
-  ctx.fillStyle = "#3b2210";
-  ctx.beginPath(); ctx.ellipse(cx, dTopY, dTopW, 15, 0, 0, Math.PI * 2); ctx.fill();
+  // A few bloom bubbles, strongest during the first bloom.
+  if (stageNo === 0 && (pouring || waiting) && wetness > .05) {
+    for (let i = 0; i < 9; i++) {
+      const bx = cx + Math.sin(i * 2.17 + elapsed * .65) * bedHalfW * (.12 + (i % 3) * .12);
+      const by = centerY + Math.cos(i * 1.47 + elapsed * .48) * 4;
+      const r = 1.2 + ((i * 7) % 4) * .42;
+      ctx.strokeStyle = "rgba(238,205,164,.72)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  ctx.restore();
 
-  const bloomSwell = elapsed > 0 ? Math.sin(elapsed * 3) * 2 + (isPouring ? 3.5 : 1) : 0;
-  const foamGrad = ctx.createRadialGradient(cx - 10, dTopY - 2, 4, cx, dTopY, dTopW * 0.8);
-  foamGrad.addColorStop(0, isPouring ? "#cfe8ff" : "#e6ccb2");
-  foamGrad.addColorStop(0.5, "#9c6644");
-  foamGrad.addColorStop(1, "#582f0e");
-  ctx.fillStyle = foamGrad;
-  ctx.beginPath(); ctx.ellipse(cx, dTopY + 2, dTopW * 0.82, 11 + bloomSwell, 0, 0, Math.PI * 2); ctx.fill();
+  // Transparent front walls and dripper rim, drawn over the bed.
+  ctx.save();
+  ctx.strokeStyle = "rgba(231,248,251,.82)"; ctx.lineWidth = 2.1;
+  shapePath(); ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.84)"; ctx.lineWidth = 2.3;
+  ctx.beginPath(); ctx.ellipse(cx, topY, topHalf, 13, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = "rgba(116,171,187,.48)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.ellipse(cx, topY + 2, topHalf - 4, 10, 0, 0, Math.PI * 2); ctx.stroke();
+  if (visualDripper === "kalita") {
+    for (let i = -5; i <= 5; i++) {
+      const x = cx + i * 11;
+      ctx.strokeStyle = "rgba(229,247,249,.27)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x * .98 + cx * .02, topY + 12); ctx.lineTo(cx + i * 8.2, bottomY - 7); ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(255,255,255,.68)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - bottomHalf, bottomY - 5); ctx.lineTo(cx + bottomHalf, bottomY - 5); ctx.stroke();
+  } else if (visualDripper === "hario") {
+    for (let i = 0; i < 12; i++) {
+      const a = Math.PI * 2 * i / 12;
+      const x1 = cx + Math.cos(a) * (topHalf - 9), y1 = topY + Math.sin(a) * 7;
+      const x2 = cx + Math.cos(a) * (bottomHalf + 2), y2 = bottomY - 9;
+      ctx.strokeStyle = "rgba(225,246,249,.20)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+  } else {
+    for (let i = -3; i <= 3; i++) {
+      ctx.strokeStyle = "rgba(231,248,251,.23)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx + i * 20, topY + 12); ctx.lineTo(cx + i * 8, bottomY - 8); ctx.stroke();
+    }
+  }
+  ctx.fillStyle = "rgba(225,244,247,.48)";
+  ctx.beginPath(); ctx.ellipse(cx, bottomY - 4, bottomHalf + 2, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
-  ctx.strokeStyle = d.themeColor; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.ellipse(cx, dTopY, dTopW, 15, 0, 0, Math.PI * 2); ctx.stroke();
+  // Extracted coffee drops from the dripper into the server.
+  if (elapsed > 1 && phaseMode !== "prep") {
+    ctx.save();
+    ctx.strokeStyle = "rgba(190,126,80,.88)"; ctx.lineWidth = waiting || phaseMode === "done" ? 1.8 : 2.6;
+    ctx.setLineDash(waiting || phaseMode === "done" ? [3, 7] : [7, 4]);
+    ctx.lineDashOffset = -elapsed * 28;
+    const outlets = visualDripper === "kalita" ? [cx - 12, cx, cx + 12] : [cx];
+    outlets.forEach(x => { ctx.beginPath(); ctx.moveTo(x, bottomY + 2); ctx.lineTo(x, liquidTopY - 1); ctx.stroke(); });
+    ctx.restore();
+  }
+
+  // Digital scale display
+  const scaleY = 376, scaleW = 330, scaleH = 56, scaleX = cx - scaleW / 2;
+  ctx.save();
+  const scaleGrad = ctx.createLinearGradient(0, scaleY, 0, scaleY + scaleH);
+  scaleGrad.addColorStop(0, "#222b32"); scaleGrad.addColorStop(1, "#070b0e");
+  ctx.fillStyle = scaleGrad; ctx.strokeStyle = pouring ? "#4fc3e5" : waiting ? "#c18a42" : "#52636a"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(scaleX, scaleY, scaleW, scaleH, 11); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#030608"; ctx.strokeStyle = "#1c6a89"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(scaleX + 10, scaleY + 7, 140, 42, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#80d7ec"; ctx.font = "800 9px sans-serif"; ctx.textAlign = "left"; ctx.fillText("TIME", scaleX + 18, scaleY + 19);
+  ctx.fillStyle = elapsed < 0 ? "#ff9c9c" : "#49d5df"; ctx.font = "900 19px monospace"; ctx.fillText(formatMMSS(elapsed), scaleX + 18, scaleY + 41);
+  ctx.fillStyle = "#030608"; ctx.strokeStyle = "#287e4a";
+  ctx.beginPath(); ctx.roundRect(scaleX + scaleW - 150, scaleY + 7, 140, 42, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#9ce4bc"; ctx.font = "800 9px sans-serif"; ctx.textAlign = "right"; ctx.fillText(pouring ? "POURING" : "WATER INPUT", scaleX + scaleW - 18, scaleY + 19);
+  ctx.fillStyle = "#ffd43b"; ctx.font = "900 19px monospace"; ctx.fillText(`${Math.round(currentWater)} g`, scaleX + scaleW - 18, scaleY + 41);
   ctx.restore();
 }
-
-
